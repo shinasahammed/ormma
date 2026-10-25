@@ -19,7 +19,7 @@ use crate::models::{Reminder, ReminderFilter};
 /// Application-level pause flag (tray/commands). While set, ticks evaluate
 /// nothing and mark nothing — pausing behaves exactly like the app being
 /// asleep: occurrences pass unmarked, and resume applies the normal
-/// missed-reminder grace policy. `last_triggered_at` and snooze state are
+/// missed-reminder grace policy. `last_triggered_at` is
 /// never touched by a paused tick. Persisted in the settings table; the
 /// runtime loads it at startup.
 static PAUSED: AtomicBool = AtomicBool::new(false);
@@ -52,10 +52,6 @@ fn evaluate_locked(
     };
     match decide(&fresh, now) {
         Decision::Skip => Ok(TickOutcome::Skipped),
-        Decision::Maintain(MaintenanceAction::ClearStaleSnooze) => {
-            db::snooze_reminder(conn, fresh.id, 0)?;
-            Ok(TickOutcome::Maintained)
-        }
         Decision::Maintain(MaintenanceAction::DisableMissedOnce) => {
             db::set_reminder_enabled(conn, fresh.id, false)?;
             Ok(TickOutcome::Maintained)
@@ -165,7 +161,7 @@ pub mod runtime {
             return;
         }
         if std::thread::Builder::new()
-            .name("papa-scheduler".to_string())
+            .name("ormma-scheduler".to_string())
             .spawn(move || {
                 log_info("scheduler started");
                 run_loop(&app);
@@ -196,7 +192,6 @@ pub mod runtime {
         schedule_type: String,
         scheduled_time: String,
         days_of_week: Option<Vec<u8>>,
-        snooze_duration: i64,
         tone: Option<String>,
     }
 
@@ -213,13 +208,12 @@ pub mod runtime {
             "reminder-due",
             ReminderDuePayload {
                 id: TEST_REMINDER_ID,
-                title: "Papa.app test reminder".to_string(),
+                title: "Ormma test reminder".to_string(),
                 message: Some("The reminder popup works.".to_string()),
                 kind: "reminder".to_string(),
                 schedule_type: "once".to_string(),
                 scheduled_time: chrono::Local::now().format("%Y-%m-%dT%H:%M").to_string(),
                 days_of_week: None,
-                snooze_duration: 5,
                 tone: None,
             },
         ) {
@@ -259,7 +253,6 @@ pub mod runtime {
                     schedule_type: reminder.schedule_type.clone(),
                     scheduled_time: reminder.scheduled_time.clone(),
                     days_of_week: reminder.days_of_week.clone(),
-                    snooze_duration: reminder.snooze_duration,
                     tone: reminder.tone.clone(),
                 },
             ) {
@@ -312,7 +305,6 @@ mod tests {
             schedule_type: "daily".to_string(),
             scheduled_time: "10:00".to_string(),
             days_of_week: None,
-            snooze_duration: 5,
             tone: None,
         }
     }
@@ -380,45 +372,6 @@ mod tests {
         );
         assert_eq!(report.evaluated, 0);
         assert_eq!(report.fired, 0);
-    }
-
-    #[test]
-    fn snooze_tick_before_and_after_elapse() {
-        use rusqlite::params;
-        let state = state();
-        let created = insert(&state, &daily_at_10());
-        // Pin the snooze to the fake clock (the write path uses the real
-        // clock, which the deterministic tick does not share).
-        let until = at(2026, 9, 21, 11, 0, 0).timestamp();
-        db::with_state(&state, |conn| {
-            conn.execute(
-                "UPDATE reminders SET snoozed_until = ?1 WHERE id = ?2",
-                params![until, created.id],
-            )
-            .expect("pin snooze");
-            Ok(())
-        })
-        .expect("pin snooze");
-        let before = tick_once(
-            &state,
-            at(2026, 9, 21, 10, 5, 0),
-            false,
-            &mut ok_notifier(),
-            &mut noop_fire,
-        );
-        assert_eq!(before.fired, 0);
-        let after = tick_once(
-            &state,
-            at(2026, 9, 21, 11, 5, 0),
-            false,
-            &mut ok_notifier(),
-            &mut noop_fire,
-        );
-        assert_eq!(after.fired, 1);
-        let stored =
-            db::with_state(&state, |conn| db::get_reminder(conn, created.id)).expect("stored");
-        assert_eq!(stored.last_triggered_at, Some(until));
-        assert_eq!(stored.snoozed_until, None);
     }
 
     #[test]
@@ -526,88 +479,6 @@ mod tests {
         );
         assert_eq!(quiet.fired, 0);
         assert!(skipped_seen.is_empty());
-    }
-
-    #[test]
-    fn paused_tick_preserves_snooze_state() {
-        use rusqlite::params;
-        let state = state();
-        let created = insert(&state, &daily_at_10());
-        // Snooze elapses at 11:00; tick at 11:05 while paused.
-        let until = at(2026, 9, 21, 11, 0, 0).timestamp();
-        db::with_state(&state, |conn| {
-            conn.execute(
-                "UPDATE reminders SET snoozed_until = ?1 WHERE id = ?2",
-                params![until, created.id],
-            )
-            .expect("pin snooze");
-            Ok(())
-        })
-        .expect("pin snooze");
-        let report = tick_once(
-            &state,
-            at(2026, 9, 21, 11, 5, 0),
-            true,
-            &mut ok_notifier(),
-            &mut noop_fire,
-        );
-        assert_eq!(report.fired, 0);
-        // Nothing consumed: snooze intact, no trigger recorded.
-        let stored =
-            db::with_state(&state, |conn| db::get_reminder(conn, created.id)).expect("stored");
-        assert_eq!(stored.snoozed_until, Some(until));
-        assert_eq!(stored.last_triggered_at, None);
-        // Resume fires the still-pending snooze.
-        let resumed = tick_once(
-            &state,
-            at(2026, 9, 21, 11, 5, 0),
-            false,
-            &mut ok_notifier(),
-            &mut noop_fire,
-        );
-        assert_eq!(resumed.fired, 1);
-    }
-
-    #[test]
-    fn snoozed_once_reminder_refires_then_is_consumed_again() {
-        let state = state();
-        let r = insert(
-            &state,
-            &CreateReminderInput {
-                schedule_type: "once".to_string(),
-                scheduled_time: "2026-09-21T10:00".to_string(),
-                ..daily_at_10()
-            },
-        );
-        let now = at(2026, 9, 21, 10, 0, 5);
-        assert_eq!(
-            tick_once(&state, now, false, &mut ok_notifier(), &mut noop_fire).fired,
-            1
-        );
-        // Snooze from the popup: the auto-disabled reminder must come back.
-        let until = now.timestamp() + 300;
-        db::with_state(&state, |conn| {
-            db::snooze_reminder(conn, r.id, 5)?;
-            conn.execute(
-                "UPDATE reminders SET snoozed_until = ?1 WHERE id = ?2",
-                rusqlite::params![until, r.id],
-            )
-            .map_err(|e| crate::error::AppError::database("pin snooze", &e))?;
-            Ok(())
-        })
-        .expect("snooze");
-        let later = at(2026, 9, 21, 10, 5, 10);
-        assert_eq!(
-            tick_once(&state, later, false, &mut ok_notifier(), &mut noop_fire).fired,
-            1,
-            "snoozed one-time reminder must refire"
-        );
-        let stored = db::with_state(&state, |conn| db::get_reminder(conn, r.id)).expect("get");
-        assert!(!stored.enabled, "consumed again after the snooze fires");
-        assert_eq!(
-            tick_once(&state, later, false, &mut ok_notifier(), &mut noop_fire).fired,
-            0
-        );
     }
 
     #[test]

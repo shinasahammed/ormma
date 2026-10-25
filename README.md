@@ -1,4 +1,4 @@
-# Papa.app
+# Ormma
 
 A calm, local-first reminder companion for the Linux desktop.
 Tauri 2 + React + TypeScript + SQLite (`rusqlite`, bundled) + Rust scheduler.
@@ -8,7 +8,7 @@ No accounts, no cloud, no analytics — reminders never leave the device.
 
 Versioning is semantic (`MAJOR.MINOR.PATCH`) and kept consistent in
 `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`.
-The bundle identifier `app.papa.desktop` and the database location are
+The bundle identifier `app.ormma.desktop` and the database location are
 stable across releases — never rename them without a data-migration plan.
 
 ## Prerequisites (Debian/Ubuntu)
@@ -52,11 +52,11 @@ intentionally Linux-only (`deb`, `appimage`).
 ## Install / upgrade / uninstall
 
 - Install the `.deb` (`sudo dpkg -i …`) or run the `.AppImage`.
-- First launch creates `~/.local/share/app.papa.desktop/papa.db`
+- First launch creates `~/.local/share/app.ormma.desktop/ormma.db`
   (via Tauri's app-data directory — never hard-coded) and default settings.
 - Upgrades keep the database: schema migrations are versioned and idempotent.
 - Uninstall (`sudo dpkg -r …`) removes the app but **keeps user data** in
-  `~/.local/share/app.papa.desktop/`; delete that directory for a full reset.
+  `~/.local/share/app.ormma.desktop/`; delete that directory for a full reset.
 - Autostart state is managed in-app (Settings → Start on login) with user
   consent only.
 

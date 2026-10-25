@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   byScheduledTime,
   describeSchedule,
-  describeSnoozeUntil,
   greetingForHour,
   isReminderToday,
   timeOfDay,
@@ -20,12 +19,10 @@ function reminder(overrides: Partial<Reminder> = {}): Reminder {
     scheduleType: "daily",
     scheduledTime: "10:00",
     daysOfWeek: null,
-    snoozeDuration: 5,
     tone: null,
     createdAt: 0,
     updatedAt: 0,
     lastTriggeredAt: null,
-    snoozedUntil: null,
     ...overrides,
   };
 }
@@ -109,20 +106,5 @@ describe("timeOfDay", () => {
     const once = reminder({ scheduleType: "once", scheduledTime: "2026-09-21T08:00" });
     expect(byScheduledTime(once, daily)).toBeLessThan(0);
     expect(byScheduledTime(daily, once)).toBeGreaterThan(0);
-  });
-});
-
-describe("describeSnoozeUntil", () => {
-  it("same-day and other-day forms", () => {
-    const sameDay = Math.floor(new Date(2026, 8, 21, 14, 35, 0).getTime() / 1000);
-    expect(describeSnoozeUntil(sameDay, MONDAY_9AM)).toMatch(/^Snoozed · back /);
-    const wednesday = Math.floor(new Date(2026, 8, 23, 9, 10, 0).getTime() / 1000);
-    expect(describeSnoozeUntil(wednesday, MONDAY_9AM)).toMatch(/^Snoozed · back Wed /);
-  });
-  it("always uses 24-hour time", () => {
-    const afternoon = Math.floor(new Date(2026, 8, 21, 14, 35, 0).getTime() / 1000);
-    const text = describeSnoozeUntil(afternoon, MONDAY_9AM);
-    expect(text).toContain("14:35");
-    expect(text).not.toMatch(/AM|PM/i);
   });
 });

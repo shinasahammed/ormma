@@ -67,11 +67,21 @@ export function Shell({
       <nav aria-label={t("nav.primary")} className="flex w-16 shrink-0 flex-col border-r border-line bg-surface md:w-60">
         <div className="flex items-center gap-2.5 px-3 py-5 md:px-5">
           <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true" className="shrink-0">
-            <rect x="1" y="1" width="24" height="24" rx="7" fill="var(--color-accent)" />
-            <circle cx="13" cy="11" r="4" fill="var(--color-on-accent)" opacity="0.9" />
-            <path d="M5 19 Q 9 16 13 18 T 21 17" stroke="var(--color-on-accent)" strokeWidth="1.6" strokeLinecap="round" opacity="0.8" />
+            <defs>
+              <linearGradient id="ormma-mark" x1="0.78" y1="0" x2="0.22" y2="1">
+                <stop offset="0" stopColor="#e4cffd" />
+                <stop offset="0.45" stopColor="#9a7cfd" />
+                <stop offset="1" stopColor="#6c54fe" />
+              </linearGradient>
+            </defs>
+            <rect width="26" height="26" rx="6" fill="#0f0b19" />
+            <path
+              transform="translate(13 13) scale(0.0366) translate(-413 -420)"
+              fill="url(#ormma-mark)"
+              d="M550 122 A333 333 0 1 1 530 115 L440 212 Q390 228 335 238 A205 205 0 1 0 545 262 C535 255 527 240 527 215 Z"
+            />
           </svg>
-          <span className="t-h2 hidden md:block">Papa.app</span>
+          <span className="t-h2 hidden md:block">Ormma</span>
         </div>
         <ul className="flex flex-col gap-1 px-2 md:px-3">
           {NAV.map((item) => {

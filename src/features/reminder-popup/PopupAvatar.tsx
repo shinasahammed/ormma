@@ -1,5 +1,5 @@
 /**
- * Pip — papa.app's original popup companion. Pure inline SVG, no assets or
+ * Pip — Ormma's original popup companion. Pure inline SVG, no assets or
  * dependencies. A sleepy-happy pebble with a sprout, drawn in a fixed warm
  * palette that reads on the `--color-nook` backdrop in both themes
  * (decorative only: `aria-hidden`, the dialog label carries the meaning).

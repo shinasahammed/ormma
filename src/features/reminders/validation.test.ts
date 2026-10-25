@@ -47,10 +47,7 @@ describe("validateReminderForm", () => {
     ).toBeDefined();
   });
 
-  it("bounds snooze, message, and tone", () => {
-    expect(validateReminderForm(values({ snoozeDuration: -1 })).snoozeDuration).toBeDefined();
-    expect(validateReminderForm(values({ snoozeDuration: 181 })).snoozeDuration).toBeDefined();
-    expect(validateReminderForm(values({ snoozeDuration: 0 })).snoozeDuration).toBeUndefined();
+  it("bounds message and tone", () => {
     expect(validateReminderForm(values({ message: "x".repeat(2001) })).message).toBeDefined();
     expect(validateReminderForm(values({ tone: "x".repeat(101) })).tone).toBeDefined();
   });

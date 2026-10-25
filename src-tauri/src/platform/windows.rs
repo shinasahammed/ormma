@@ -15,7 +15,7 @@ pub const POPUP_LABEL: &str = "reminder-popup";
 
 /// Logical width of the popup window (also the centering fallback below).
 const POPUP_WIDTH: f64 = 460.0;
-/// Tall enough for the card plus the snooze menu, which opens below it.
+/// Tall enough for the card plus its entrance/exit motion.
 const POPUP_HEIGHT: f64 = 400.0;
 
 fn hide_on_close(window: &WebviewWindow) {

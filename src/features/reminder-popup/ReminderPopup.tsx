@@ -8,9 +8,8 @@ import {
   bubbleUnfoldVariants,
   flatExit,
 } from "./motion";
-import { SNOOZE_PRESETS, useReminderPopup } from "./useReminderPopup";
+import { useReminderPopup } from "./useReminderPopup";
 import { PopupAvatar } from "./PopupAvatar";
-import { snoozeOptions } from "./types";
 
 /**
  * Companion popup as a staged top-center "notch" reveal (NOTCH EXPANDS → PIP
@@ -29,7 +28,6 @@ import { snoozeOptions } from "./types";
  * - Clicking anywhere (or Enter/Esc) dismisses, exactly like Done.
  * - Each presentation auto-dismisses after the configured duration and
  *   advances the queue.
- * - `S` opens the snooze menu; it pauses auto-dismiss while open.
  * - Presentation only: the occurrence was already consumed by the Rust
  *   scheduler, so dismissing never touches schedule state.
  */
@@ -51,21 +49,12 @@ export function ReminderPopup(): JSX.Element {
 
   function onKeyDown(event: React.KeyboardEvent): void {
     if (event.key === "Escape") {
-      // Dismiss the snooze menu first; only hide the popup when it is closed.
-      if (popup.snoozeOpen) {
-        popup.toggleSnoozeMenu();
-      } else {
-        popup.close();
-      }
+      popup.close();
       return;
     }
     const target = event.target as HTMLElement;
     const typing = ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName);
-    if ((event.key === "s" || event.key === "S") && !typing) {
-      popup.toggleSnoozeMenu();
-      return;
-    }
-    if (event.key === "Enter" && !popup.snoozeOpen && !typing) {
+    if (event.key === "Enter" && !typing) {
       popup.done();
     }
   }
@@ -150,43 +139,6 @@ export function ReminderPopup(): JSX.Element {
                     {current.message}
                   </p>
                 )}
-
-                {popup.error !== null && (
-                  <p role="alert" className="mt-2 rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
-                    {popup.error}
-                  </p>
-                )}
-
-                <AnimatePresence>
-                  {popup.snoozeOpen && (
-                    <motion.div
-                      role="menu"
-                      aria-label={t("popup.snoozeFor")}
-                      onClick={(e) => e.stopPropagation()}
-                      className="absolute top-full left-0 z-20 mt-2 w-44 overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-[var(--shadow-pop)]"
-                      initial={{ opacity: 0, y: -6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      transition={{ duration: 0.14 }}
-                    >
-                      <p className="t-label px-3 pt-1.5 pb-1 text-muted">{t("popup.snoozeFor")}</p>
-                      {snoozeOptions(current.snoozeDuration, SNOOZE_PRESETS).map((minutes) => (
-                        <button
-                          key={minutes}
-                          type="button"
-                          role="menuitem"
-                          disabled={popup.snoozing}
-                          onClick={() => popup.snooze(minutes)}
-                          className="block w-full px-3 py-1.5 text-left text-sm hover:bg-raised disabled:opacity-50"
-                        >
-                          {minutes === 60
-                            ? t("popup.oneHour")
-                            : t("popup.minutes", { count: minutes })}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </motion.div>
             </motion.section>
           )}

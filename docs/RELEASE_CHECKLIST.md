@@ -1,6 +1,6 @@
-# Papa.app — Release Test Checklist
+# Ormma — Release Test Checklist
 
-How to validate a Papa.app build before release. Items marked **[AUTO]**
+How to validate a Ormma build before release. Items marked **[AUTO]**
 run in this environment; items marked **[RUNTIME]** need a real Linux GUI
 with WebKitGTK/Soup/Rsvg dev packages and a display server.
 
@@ -17,7 +17,7 @@ it, run the equivalent harness (compiles the exact `error`/`models`/`db`/
 `scheduler`/`platform-env` sources minus Tauri-runtime items):
 
 ```bash
-# one-time harness setup mirrors /tmp/papa-dbverify (see Phase 9 notes):
+# one-time harness setup mirrors /tmp/ormma-dbverify (see Phase 9 notes):
 cargo test           # inside the harness checkout
 ```
 
@@ -36,7 +36,7 @@ Expected: Vitest all-pass, Rust harness all-pass, fmt clean, build clean.
 ## [RUNTIME] Fresh install
 
 - [ ] Application launches, no stderr errors
-- [ ] `papa.db` created in app-data dir, migrations applied
+- [ ] `ormma.db` created in app-data dir, migrations applied
 - [ ] Defaults loaded (theme system, English, tone soft fallback)
 - [ ] Tray icon appears (needs AppIndicator on stock GNOME)
 - [ ] Scheduler starts (first tick = recovery, no spurious fires)
@@ -48,10 +48,9 @@ Expected: Vitest all-pass, Rust harness all-pass, fmt clean, build clean.
 - [ ] Popup shows correct title/message/schedule
 - [ ] Done dismisses; no duplicate firing on later ticks
 
-## [RUNTIME] Recurring + snooze
+## [RUNTIME] Recurring
 
 - [ ] Daily fires once per day; weekly fires on configured days only
-- [ ] Snooze (5/10/15/30/60) returns; survives app restart
 - [ ] Pause → wait past fire time → nothing fires, state intact
 - [ ] Resume → grace/recovery policy applies
 
@@ -68,7 +67,6 @@ Expected: Vitest all-pass, Rust harness all-pass, fmt clean, build clean.
 
 - [ ] Long title/message scroll safely in the fixed window
 - [ ] Two rapid reminders queue FIFO with "+N more"
-- [ ] Snooze failure keeps popup visible with retry
 - [ ] Esc closes menu-first, then popup; S toggles menu; Enter = Done
 - [ ] Reduced-motion setting yields fade-only transitions
 - [ ] Bottom-right placement; sane fallback on Wayland

@@ -19,12 +19,7 @@ export function CreateReminderDialog({ open, initial, data, onClose }: CreateRem
   const { t } = useTranslation(data.settings?.language);
   const lang = data.settings?.language ?? "en";
   const [pending, setPending] = useState(false);
-  // Blank form starts from the user's default snooze (Settings); presets keep
-  // their own tuned values.
-  const startValues: ReminderFormValues = initial ?? {
-    ...EMPTY_VALUES,
-    snoozeDuration: data.settings?.snoozeDuration ?? EMPTY_VALUES.snoozeDuration,
-  };
+  const startValues: ReminderFormValues = initial ?? EMPTY_VALUES;
 
   async function handleSubmit(values: ReminderFormValues): Promise<void> {
     setPending(true);

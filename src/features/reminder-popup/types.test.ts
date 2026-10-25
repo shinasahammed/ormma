@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { snoozeOptions, validatePopupPayload } from "./types";
+import { validatePopupPayload } from "./types";
 
 const VALID = {
   id: 3,
@@ -9,7 +9,6 @@ const VALID = {
   scheduleType: "daily",
   scheduledTime: "10:00",
   daysOfWeek: null,
-  snoozeDuration: 5,
   tone: null,
 };
 
@@ -32,7 +31,6 @@ describe("validatePopupPayload", () => {
     ["missing scheduledTime", { ...VALID, scheduledTime: undefined }],
     ["non-array days", { ...VALID, daysOfWeek: "mon" }],
     ["non-string tone", { ...VALID, tone: 3 }],
-    ["missing snooze duration", { ...VALID, snoozeDuration: undefined }],
   ])("rejects %s", (_label, value) => {
     expect(validatePopupPayload(value)).toBeNull();
   });
@@ -41,19 +39,5 @@ describe("validatePopupPayload", () => {
     const parsed = validatePopupPayload({ ...VALID, title: "  Water  ", message: null });
     expect(parsed?.title).toBe("Water");
     expect(parsed?.message).toBeNull();
-  });
-});
-
-describe("snoozeOptions", () => {
-  const PRESETS = [5, 10, 15, 30, 60];
-  it("puts the reminder's own length first", () => {
-    expect(snoozeOptions(20, PRESETS)).toEqual([20, 5, 10, 15, 30, 60]);
-  });
-  it("does not duplicate a length that is already a preset", () => {
-    expect(snoozeOptions(10, PRESETS)).toEqual([10, 5, 15, 30, 60]);
-  });
-  it("ignores zero or out-of-range lengths", () => {
-    expect(snoozeOptions(0, PRESETS)).toEqual(PRESETS);
-    expect(snoozeOptions(999, PRESETS)).toEqual(PRESETS);
   });
 });

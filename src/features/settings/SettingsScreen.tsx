@@ -74,7 +74,6 @@ export function SettingsScreen({ data }: SettingsScreenProps): JSX.Element {
     draft.language !== data.settings.language ||
     draft.defaultTone !== data.settings.defaultTone ||
     draft.notificationsEnabled !== data.settings.notificationsEnabled ||
-    draft.snoozeDuration !== data.settings.snoozeDuration ||
     draft.popupDurationSecs !== data.settings.popupDurationSecs ||
     draft.reducedMotion !== data.settings.reducedMotion ||
     draft.companionAvatar !== data.settings.companionAvatar ||
@@ -166,15 +165,6 @@ export function SettingsScreen({ data }: SettingsScreenProps): JSX.Element {
       <div className="mt-5 flex flex-col gap-4">
         <Card title={t("settings.reminders")}>
           <div className="flex max-w-xs flex-col gap-4">
-            <TextField
-              id="settings-snooze"
-              label={t("settings.defaultSnooze")}
-              type="number"
-              min={0}
-              max={180}
-              value={draft.snoozeDuration}
-              onChange={(e) => setDraft({ ...draft, snoozeDuration: Number(e.target.value) })}
-            />
             <TextField
               id="settings-popup-duration"
               label={t("settings.popupDuration")}

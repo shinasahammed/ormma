@@ -11,7 +11,6 @@ function payload(id: number, overrides: Partial<PopupPayload> = {}): PopupPayloa
     scheduleType: "daily",
     scheduledTime: "10:00",
     daysOfWeek: null,
-    snoozeDuration: 5,
     tone: null,
     ...overrides,
   };

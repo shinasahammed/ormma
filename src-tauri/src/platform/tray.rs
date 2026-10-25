@@ -24,7 +24,7 @@ pub fn build(app: &AppHandle) -> AppResult<()> {
     let icon = Image::from_bytes(include_bytes!("../../icons/tray-icon.png"))
         .map_err(|e| tray_err("loading tray icon", e))?;
 
-    let open = MenuItem::with_id(app, "open", "Open Papa.app", true, None::<&str>)
+    let open = MenuItem::with_id(app, "open", "Open Ormma", true, None::<&str>)
         .map_err(|e| tray_err("building tray menu", e))?;
     let pause = MenuItem::with_id(app, "pause", "Pause reminders", true, None::<&str>)
         .map_err(|e| tray_err("building tray menu", e))?;
@@ -55,7 +55,7 @@ pub fn build(app: &AppHandle) -> AppResult<()> {
 
     TrayIconBuilder::with_id("main-tray")
         .icon(icon)
-        .tooltip("Papa.app")
+        .tooltip("Ormma")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| on_menu(app, event.id.as_ref()))

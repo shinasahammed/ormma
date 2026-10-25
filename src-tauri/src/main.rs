@@ -16,5 +16,5 @@ fn prefer_x11_for_popup_placement() {
 fn main() {
     #[cfg(target_os = "linux")]
     prefer_x11_for_popup_placement();
-    papa_app::run();
+    ormma_app::run();
 }

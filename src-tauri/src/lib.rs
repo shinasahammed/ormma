@@ -12,7 +12,7 @@ use tauri::Manager;
 
 /// Tauri 2 entry point (Phase 4: Linux system integration).
 ///
-/// Startup: app-data dir -> open/migrate `papa.db` -> manage `DbState` ->
+/// Startup: app-data dir -> open/migrate `ormma.db` -> manage `DbState` ->
 /// restore pause flag -> init plugins (notification, autostart, positioner)
 /// -> wire window events -> build tray -> sync autostart preference ->
 /// apply launch-minimized -> start scheduler (first tick = recovery).
@@ -79,7 +79,6 @@ pub fn run() {
             commands::update_reminder,
             commands::delete_reminder,
             commands::set_reminder_enabled,
-            commands::snooze_reminder,
             commands::trigger_reminder_test,
             commands::get_settings,
             commands::update_settings,
@@ -96,5 +95,5 @@ pub fn run() {
             commands::platform::quit_app,
         ])
         .run(tauri::generate_context!())
-        .expect("failed to run Papa.app");
+        .expect("failed to run Ormma");
 }

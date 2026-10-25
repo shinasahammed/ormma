@@ -1,6 +1,6 @@
 //! SQLite persistence layer (Phase 2).
 //!
-//! - Database file lives in Tauri's `app_data_dir` (`papa.db`), never in the
+//! - Database file lives in Tauri's `app_data_dir` (`ormma.db`), never in the
 //!   project directory. Tests use isolated temp files / in-memory databases.
 //! - Schema evolves through versioned migrations (`migrations/*.sql`)
 //!   tracked in `schema_migrations` — never an ad-hoc DDL block on launch.
@@ -21,13 +21,15 @@ use crate::models::{
     UpdateReminderInput,
 };
 
-const DB_FILE_NAME: &str = "papa.db";
+const DB_FILE_NAME: &str = "ormma.db";
 
 /// Migrations applied in order. To evolve the schema, append
-/// `(3, include_str!("migrations/003_....sql"))` — never edit `001`/`002`.
+/// `(5, include_str!("migrations/005_....sql"))` — never edit `001`-`004`.
 const MIGRATIONS: &[(i64, &str)] = &[
     (1, include_str!("migrations/001_initial.sql")),
     (2, include_str!("migrations/002_snoozed_until.sql")),
+    (3, include_str!("migrations/003_remove_alarm_kind.sql")),
+    (4, include_str!("migrations/004_remove_snooze.sql")),
 ];
 
 /// Process-wide database handle shared with Tauri commands.
@@ -72,7 +74,7 @@ pub fn open_or_create(path: &Path) -> AppResult<rusqlite::Connection> {
 }
 
 /// Resolves the production database path via Tauri's app-data directory
-/// (e.g. `~/.local/share/app.papa.desktop/papa.db` on Linux).
+/// (e.g. `~/.local/share/app.ormma.desktop/ormma.db` on Linux).
 pub fn resolve_db_path(app: &tauri::AppHandle) -> AppResult<PathBuf> {
     use tauri::Manager;
     let dir = app
@@ -157,12 +159,10 @@ fn reminder_from_row(row: &Row<'_>) -> rusqlite::Result<Reminder> {
                 Box::new(std::io::Error::other(e.to_string())),
             )
         })?,
-        snooze_duration: row.get("snooze_duration")?,
         tone: row.get("tone")?,
         created_at: row.get("created_at")?,
         updated_at: row.get("updated_at")?,
         last_triggered_at: row.get("last_triggered_at")?,
-        snoozed_until: row.get("snoozed_until")?,
     })
 }
 
@@ -180,9 +180,8 @@ pub fn create_reminder(
     conn.execute(
         "INSERT INTO reminders
             (title, message, kind, enabled, schedule_type, scheduled_time,
-             days_of_week, snooze_duration, tone, created_at, updated_at,
-             last_triggered_at, snoozed_until)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, NULL, NULL)",
+             days_of_week, tone, created_at, updated_at, last_triggered_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, NULL)",
         params![
             v.title,
             v.message,
@@ -191,7 +190,6 @@ pub fn create_reminder(
             v.schedule_type,
             v.scheduled_time,
             encode_days(&v.days_of_week),
-            v.snooze_duration,
             v.tone,
             now,
             now,
@@ -256,25 +254,14 @@ pub fn update_reminder(
     }
     let current = get_reminder(conn, input.id)?;
     let merged = input.apply_to(&current)?;
-    // A changed schedule invalidates any pending snooze: the snooze belonged
-    // to the previous schedule. Content-only edits keep the snooze.
-    let schedule_changed = merged.schedule_type != current.schedule_type
-        || merged.scheduled_time != current.scheduled_time
-        || merged.days_of_week != current.days_of_week;
-    let snoozed_until = if schedule_changed {
-        None
-    } else {
-        current.snoozed_until
-    };
     let now = now_secs();
     let changed = conn
         .execute(
             "UPDATE reminders SET
                 title = ?1, message = ?2, kind = ?3, enabled = ?4,
                 schedule_type = ?5, scheduled_time = ?6, days_of_week = ?7,
-                snooze_duration = ?8, tone = ?9, updated_at = ?10,
-                snoozed_until = ?11
-             WHERE id = ?12",
+                tone = ?8, updated_at = ?9
+             WHERE id = ?10",
             params![
                 merged.title,
                 merged.message,
@@ -283,10 +270,8 @@ pub fn update_reminder(
                 merged.schedule_type,
                 merged.scheduled_time,
                 encode_days(&merged.days_of_week),
-                merged.snooze_duration,
                 merged.tone,
                 now,
-                snoozed_until,
                 input.id,
             ],
         )
@@ -336,43 +321,6 @@ pub fn set_reminder_enabled(
 // Scheduler support (Phase 3)
 // ---------------------------------------------------------------------------
 
-/// Sets snooze state: `minutes > 0` snoozes until now + minutes, `0` clears
-/// the snooze. Survives restart (persisted column). Rejects unknown ids with
-/// `NOT_FOUND` and out-of-range values with validation errors.
-pub fn snooze_reminder(conn: &rusqlite::Connection, id: i64, minutes: i64) -> AppResult<Reminder> {
-    if id <= 0 {
-        return Err(AppError::validation(format!(
-            "Invalid reminder id '{id}': expected a positive integer"
-        )));
-    }
-    if !(0..=crate::models::MAX_SNOOZE_MINUTES).contains(&minutes) {
-        return Err(AppError::validation(format!(
-            "Snooze must be between 0 and {} minutes",
-            crate::models::MAX_SNOOZE_MINUTES
-        )));
-    }
-    let current = get_reminder(conn, id)?;
-    let until = if minutes == 0 {
-        None
-    } else {
-        Some(now_secs().saturating_add(minutes.saturating_mul(60)))
-    };
-    // A one-time reminder is auto-disabled when it fires; snoozing it from the
-    // popup must bring it back for the snooze (the scheduler only evaluates
-    // enabled reminders). Re-disabled when the snooze fires.
-    let revive = until.is_some()
-        && !current.enabled
-        && current.schedule_type == "once"
-        && current.last_triggered_at.is_some();
-    conn.execute(
-        "UPDATE reminders SET snoozed_until = ?1, enabled = CASE WHEN ?4 THEN 1 ELSE enabled END,
-                updated_at = ?2 WHERE id = ?3",
-        params![until, now_secs(), id, revive],
-    )
-    .map_err(|e| AppError::database("snoozing reminder", &e))?;
-    get_reminder(conn, id)
-}
-
 /// Arms a daily/weekly reminder at `now`: marks the latest occurrence that
 /// already passed as consumed, so creating, re-timing or re-enabling a
 /// reminder never fires an occurrence from before the user's change. Only ever
@@ -396,8 +344,7 @@ pub fn arm_recurring(
     get_reminder(conn, id)
 }
 
-/// Consumes one scheduled occurrence: records `last_triggered_at`, clears any
-/// snooze, and optionally disables (one-time reminders). Called by the engine
+/// Consumes one scheduled occurrence: records `last_triggered_at` and optionally disables (one-time reminders). Called by the engine
 /// BEFORE the notification is sent, so a crash or delivery failure can never
 /// cause the same occurrence to fire twice.
 pub fn mark_fired(
@@ -409,7 +356,7 @@ pub fn mark_fired(
     let current = get_reminder(conn, id)?;
     let enabled = current.enabled && !disable_after;
     conn.execute(
-        "UPDATE reminders SET last_triggered_at = ?1, enabled = ?2, snoozed_until = NULL,
+        "UPDATE reminders SET last_triggered_at = ?1, enabled = ?2,
                 updated_at = ?3 WHERE id = ?4",
         params![occurrence_epoch, i64::from(enabled), now_secs(), id],
     )
@@ -464,10 +411,6 @@ pub fn get_settings(conn: &rusqlite::Connection) -> AppResult<AppSettings> {
             read_setting(conn, "launch_minimized")?,
             defaults.launch_minimized,
         ),
-        snooze_duration: parse_int(
-            read_setting(conn, "snooze_duration")?,
-            defaults.snooze_duration,
-        ),
         reduced_motion: parse_bool(
             read_setting(conn, "reduced_motion")?,
             defaults.reduced_motion,
@@ -510,7 +453,6 @@ pub fn update_settings(
             "launch_minimized",
             i64::from(v.launch_minimized).to_string(),
         ),
-        ("snooze_duration", v.snooze_duration.to_string()),
         ("reduced_motion", i64::from(v.reduced_motion).to_string()),
         ("popup_duration_secs", v.popup_duration_secs.to_string()),
     ];
@@ -613,7 +555,7 @@ mod tests {
 
     fn temp_db_path() -> PathBuf {
         let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-        std::env::temp_dir().join(format!("papa-app-test-{}-{}.db", std::process::id(), n))
+        std::env::temp_dir().join(format!("ormma-app-test-{}-{}.db", std::process::id(), n))
     }
 
     fn sample_input() -> CreateReminderInput {
@@ -625,7 +567,6 @@ mod tests {
             schedule_type: "daily".to_string(),
             scheduled_time: "10:00".to_string(),
             days_of_week: None,
-            snooze_duration: 5,
             tone: None,
         }
     }
@@ -633,9 +574,9 @@ mod tests {
     #[test]
     fn migration_runs_and_is_idempotent() {
         let conn = memory_db();
-        assert_eq!(schema_version(&conn).expect("version"), 2);
+        assert_eq!(schema_version(&conn).expect("version"), 4);
         run_migrations(&conn).expect("second run must be a no-op");
-        assert_eq!(schema_version(&conn).expect("version"), 2);
+        assert_eq!(schema_version(&conn).expect("version"), 4);
         for table in ["reminders", "settings", "schema_migrations"] {
             let exists: i64 = conn
                 .query_row(
@@ -672,7 +613,6 @@ mod tests {
                 schedule_type: None,
                 scheduled_time: None,
                 days_of_week: None,
-                snooze_duration: None,
                 tone: None,
             },
         )
@@ -697,79 +637,17 @@ mod tests {
     }
 
     #[test]
-    fn snooze_and_mark_fired() {
+    fn mark_fired_records_trigger_and_disables_once() {
         let conn = memory_db();
         let created = create_reminder(&conn, &sample_input()).expect("create");
-        assert_eq!(created.snoozed_until, None);
+        let at = now_secs();
 
-        let snoozed = snooze_reminder(&conn, created.id, 10).expect("snooze");
-        let until = snoozed.snoozed_until.expect("snoozed_until set");
-        assert!(until > now_secs());
-
-        // Snooze survives a reopen (persisted column, not a timer).
-        let reloaded = get_reminder(&conn, created.id).expect("reload");
-        assert_eq!(reloaded.snoozed_until, Some(until));
-
-        let fired = mark_fired(&conn, created.id, until, false).expect("mark");
-        assert_eq!(fired.last_triggered_at, Some(until));
-        assert_eq!(fired.snoozed_until, None);
+        let fired = mark_fired(&conn, created.id, at, false).expect("mark");
+        assert_eq!(fired.last_triggered_at, Some(at));
         assert!(fired.enabled);
 
-        let once_fired = mark_fired(&conn, created.id, until, true).expect("mark once");
+        let once_fired = mark_fired(&conn, created.id, at, true).expect("mark once");
         assert!(!once_fired.enabled);
-
-        snooze_reminder(&conn, created.id, 0).expect("clear");
-        assert_eq!(
-            get_reminder(&conn, created.id).expect("get").snoozed_until,
-            None
-        );
-        assert!(snooze_reminder(&conn, created.id, 9999).is_err());
-        assert!(snooze_reminder(&conn, 9999, 5).is_err());
-    }
-
-    #[test]
-    fn schedule_change_clears_snooze() {
-        let conn = memory_db();
-        let created = create_reminder(&conn, &sample_input()).expect("create");
-        snooze_reminder(&conn, created.id, 10).expect("snooze");
-
-        // Content-only edit keeps the snooze.
-        let renamed = update_reminder(
-            &conn,
-            &UpdateReminderInput {
-                id: created.id,
-                title: Some("Renamed".to_string()),
-                message: None,
-                kind: None,
-                enabled: None,
-                schedule_type: None,
-                scheduled_time: None,
-                days_of_week: None,
-                snooze_duration: None,
-                tone: None,
-            },
-        )
-        .expect("rename");
-        assert!(renamed.snoozed_until.is_some());
-
-        // Schedule edit invalidates the snooze.
-        let rescheduled = update_reminder(
-            &conn,
-            &UpdateReminderInput {
-                id: created.id,
-                title: None,
-                message: None,
-                kind: None,
-                enabled: None,
-                schedule_type: None,
-                scheduled_time: Some("11:00".to_string()),
-                days_of_week: None,
-                snooze_duration: None,
-                tone: None,
-            },
-        )
-        .expect("reschedule");
-        assert_eq!(rescheduled.snoozed_until, None);
     }
 
     #[test]
@@ -827,19 +705,16 @@ mod tests {
             );
             let mut next = AppSettings::default();
             next.theme = "dark".to_string();
-            next.snooze_duration = 10;
             next.popup_duration_secs = 30;
             next.notifications_enabled = false;
             let saved = update_settings(&mut conn, &next).expect("update");
             assert_eq!(saved.theme, "dark");
-            assert_eq!(saved.snooze_duration, 10);
             assert_eq!(saved.popup_duration_secs, 30);
         }
         {
             let conn = open_or_create(&path).expect("reopen");
             let reloaded = get_settings(&conn).expect("reload");
             assert_eq!(reloaded.theme, "dark");
-            assert_eq!(reloaded.snooze_duration, 10);
             assert_eq!(reloaded.popup_duration_secs, 30);
             assert!(!reloaded.notifications_enabled);
         }
@@ -916,16 +791,81 @@ mod tests {
     }
 
     #[test]
-    fn migration_002_adds_snooze_column() {
-        let conn = memory_db();
-        let count: i64 = conn
+    fn migration_004_drops_snooze_columns_and_setting() {
+        let conn = rusqlite::Connection::open_in_memory().expect("in-memory db");
+        // Build a version-3 database, as an existing install would have.
+        for (_, sql) in &MIGRATIONS[..3] {
+            conn.execute_batch(sql).expect("apply early migration");
+        }
+        conn.execute_batch(
+            "INSERT INTO schema_migrations (version, applied_at) VALUES (1, 0), (2, 0), (3, 0);
+             INSERT INTO reminders (title, scheduled_time, snooze_duration, snoozed_until, created_at, updated_at)
+                 VALUES ('Water', '10:00', 10, 123, 0, 0);
+             INSERT INTO settings (key, value, updated_at) VALUES ('snooze_duration', '10', 0);",
+        )
+        .expect("seed v3 rows");
+
+        run_migrations(&conn).expect("upgrade to latest");
+
+        let snooze_columns: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM pragma_table_info('reminders') WHERE name = 'snoozed_until'",
+                "SELECT COUNT(*) FROM pragma_table_info('reminders')
+                 WHERE name IN ('snooze_duration', 'snoozed_until')",
                 [],
                 |row| row.get(0),
             )
             .expect("pragma query");
-        assert_eq!(count, 1);
+        assert_eq!(snooze_columns, 0);
+        let setting: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM settings WHERE key = 'snooze_duration'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("count setting");
+        assert_eq!(setting, 0);
+        assert_eq!(
+            list_reminders(&conn, &ReminderFilter::default())
+                .expect("list")
+                .len(),
+            1
+        );
+        assert_eq!(schema_version(&conn).expect("version"), 4);
+    }
+
+    #[test]
+    fn migration_003_folds_alarms_into_reminders() {
+        let conn = rusqlite::Connection::open_in_memory().expect("in-memory db");
+        // Build a version-2 database, as an existing install would have.
+        conn.execute_batch(MIGRATIONS[0].1).expect("apply 001");
+        conn.execute_batch(MIGRATIONS[1].1).expect("apply 002");
+        conn.execute_batch(
+            "INSERT INTO schema_migrations (version, applied_at) VALUES (1, 0), (2, 0);
+             INSERT INTO reminders (title, kind, scheduled_time, created_at, updated_at) VALUES
+                 ('Wake up', 'alarm', '07:00', 0, 0),
+                 ('Water', 'reminder', '10:00', 0, 0);",
+        )
+        .expect("seed v2 rows");
+
+        run_migrations(&conn).expect("upgrade to latest");
+
+        let alarms: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM reminders WHERE kind = 'alarm'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("count alarms");
+        let reminders: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM reminders WHERE kind = 'reminder'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("count reminders");
+        assert_eq!(alarms, 0);
+        assert_eq!(reminders, 2);
+        assert_eq!(schema_version(&conn).expect("version"), 4);
     }
 
     #[test]
@@ -933,7 +873,6 @@ mod tests {
         let conn = memory_db();
         conn.execute(
             "INSERT INTO settings (key, value, updated_at) VALUES
-             ('snooze_duration', 'not-a-number', 0),
              ('notifications_enabled', 'maybe', 0),
              ('theme', 'neon', 0)",
             [],
@@ -941,7 +880,6 @@ mod tests {
         .expect("seed corrupt rows");
         let settings = get_settings(&conn).expect("reads with fallbacks");
         let defaults = AppSettings::default();
-        assert_eq!(settings.snooze_duration, defaults.snooze_duration);
         assert_eq!(
             settings.notifications_enabled,
             defaults.notifications_enabled

@@ -33,9 +33,6 @@ export function validatePopupPayload(value: unknown): PopupPayload | null {
   if (v["tone"] !== null && typeof v["tone"] !== "string") {
     return null;
   }
-  if (typeof v["snoozeDuration"] !== "number" || !Number.isInteger(v["snoozeDuration"])) {
-    return null;
-  }
   return {
     id: v["id"] as number,
     title: (v["title"] as string).trim().slice(0, 200),
@@ -44,16 +41,6 @@ export function validatePopupPayload(value: unknown): PopupPayload | null {
     scheduleType: v["scheduleType"] as string,
     scheduledTime: v["scheduledTime"] as string,
     daysOfWeek: v["daysOfWeek"] as number[] | null,
-    snoozeDuration: v["snoozeDuration"] as number,
     tone: v["tone"] as string | null,
   };
-}
-
-/** Snooze menu entries: the reminder's own length first, then the presets. */
-export function snoozeOptions(
-  reminderMinutes: number,
-  presets: readonly number[],
-): number[] {
-  const own = reminderMinutes > 0 && reminderMinutes <= 180 ? [reminderMinutes] : [];
-  return [...new Set([...own, ...presets])];
 }

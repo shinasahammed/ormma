@@ -2520,6 +2520,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ormma-app"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "chrono-tz",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-autostart",
+ "tauri-plugin-notification",
+ "tauri-plugin-positioner",
+ "tauri-plugin-single-instance",
+]
+
+[[package]]
 name = "pango"
 version = "0.18.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2542,23 +2559,6 @@ dependencies = [
  "gobject-sys",
  "libc",
  "system-deps",
-]
-
-[[package]]
-name = "papa-app"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "chrono-tz",
- "rusqlite",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-autostart",
- "tauri-plugin-notification",
- "tauri-plugin-positioner",
- "tauri-plugin-single-instance",
 ]
 
 [[package]]

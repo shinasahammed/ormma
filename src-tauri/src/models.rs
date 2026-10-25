@@ -11,13 +11,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{AppError, AppResult};
 
-pub const REMINDER_KINDS: &[&str] = &["reminder", "alarm"];
+pub const REMINDER_KINDS: &[&str] = &["reminder"];
 pub const SCHEDULE_TYPES: &[&str] = &["once", "daily", "weekly"];
 
 pub const MAX_TITLE_LEN: usize = 200;
 pub const MAX_MESSAGE_LEN: usize = 2000;
 pub const MAX_TONE_LEN: usize = 100;
-pub const MAX_SNOOZE_MINUTES: i64 = 180;
 /// Upper bound on a custom companion avatar (`data:image/...` URL, already
 /// downscaled client-side to at most 256px). Defensive only.
 pub const MAX_AVATAR_DATA_LEN: usize = 500_000;
@@ -39,18 +38,12 @@ pub struct Reminder {
     /// Sorted, deduplicated weekday numbers (`0` = Sunday .. `6` = Saturday).
     /// `None` unless `schedule_type == "weekly"`.
     pub days_of_week: Option<Vec<u8>>,
-    /// Snooze length in minutes.
-    pub snooze_duration: i64,
     /// Tone identifier, `None` = default tone.
     pub tone: Option<String>,
     /// Unix epoch seconds.
     pub created_at: i64,
     pub updated_at: i64,
     pub last_triggered_at: Option<i64>,
-    /// Snooze state (Phase 3): epoch seconds when the snooze elapses and the
-    /// reminder becomes due again. `None` = not snoozed. Persisted so snooze
-    /// survives application restart.
-    pub snoozed_until: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -63,7 +56,6 @@ pub struct CreateReminderInput {
     pub schedule_type: String,
     pub scheduled_time: String,
     pub days_of_week: Option<Vec<u8>>,
-    pub snooze_duration: i64,
     pub tone: Option<String>,
 }
 
@@ -81,7 +73,6 @@ pub struct UpdateReminderInput {
     pub scheduled_time: Option<String>,
     /// `None` = leave unchanged. `Some([])` clears to `NULL`.
     pub days_of_week: Option<Vec<u8>>,
-    pub snooze_duration: Option<i64>,
     /// `None` = leave unchanged. `Some("")` clears the tone to `NULL`.
     pub tone: Option<String>,
 }
@@ -101,7 +92,6 @@ pub struct AppSettings {
     pub notifications_enabled: bool,
     pub autostart_enabled: bool,
     pub launch_minimized: bool,
-    pub snooze_duration: i64,
     pub reduced_motion: bool,
     /// Custom companion image (`data:image/...` URL, resized client-side) or
     /// `None` for the built-in Pip. Display-only; never affects scheduling.
@@ -119,7 +109,6 @@ impl Default for AppSettings {
             notifications_enabled: true,
             autostart_enabled: false,
             launch_minimized: false,
-            snooze_duration: 5,
             reduced_motion: false,
             companion_avatar: None,
             popup_duration_secs: 10,
@@ -276,16 +265,6 @@ fn validate_days_of_week(
     }
 }
 
-fn validate_snooze(value: i64) -> AppResult<i64> {
-    if (0..=MAX_SNOOZE_MINUTES).contains(&value) {
-        Ok(value)
-    } else {
-        Err(AppError::validation(format!(
-            "Snooze duration must be between 0 and {MAX_SNOOZE_MINUTES} minutes"
-        )))
-    }
-}
-
 fn validate_tone(tone: &Option<String>) -> AppResult<Option<String>> {
     match tone {
         None => Ok(None),
@@ -315,7 +294,6 @@ impl CreateReminderInput {
             enabled: self.enabled,
             scheduled_time: validate_scheduled_time(&schedule_type, &self.scheduled_time)?,
             days_of_week: validate_days_of_week(&schedule_type, &self.days_of_week)?,
-            snooze_duration: validate_snooze(self.snooze_duration)?,
             tone: validate_tone(&self.tone)?,
             schedule_type,
         })
@@ -343,7 +321,6 @@ impl UpdateReminderInput {
                 .days_of_week
                 .clone()
                 .or_else(|| current.days_of_week.clone()),
-            snooze_duration: self.snooze_duration.unwrap_or(current.snooze_duration),
             tone: self.tone.clone().or_else(|| current.tone.clone()),
         }
         .validated()?)
@@ -367,7 +344,6 @@ impl AppSettings {
                 "Default tone must be a non-empty identifier",
             ));
         }
-        validate_snooze(self.snooze_duration)?;
         if !(MIN_POPUP_SECS..=MAX_POPUP_SECS).contains(&self.popup_duration_secs) {
             return Err(AppError::validation(format!(
                 "Popup duration must be between {MIN_POPUP_SECS} and {MAX_POPUP_SECS} seconds"
@@ -387,7 +363,6 @@ impl AppSettings {
             notifications_enabled: self.notifications_enabled,
             autostart_enabled: self.autostart_enabled,
             launch_minimized: self.launch_minimized,
-            snooze_duration: self.snooze_duration,
             reduced_motion: self.reduced_motion,
             companion_avatar: self.companion_avatar.clone(),
             popup_duration_secs: self.popup_duration_secs,
@@ -446,7 +421,6 @@ mod tests {
             schedule_type: "daily".to_string(),
             scheduled_time: "10:00".to_string(),
             days_of_week: None,
-            snooze_duration: 5,
             tone: None,
         }
     }

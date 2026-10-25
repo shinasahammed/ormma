@@ -48,7 +48,7 @@ pub fn notify(app: &AppHandle, reminder: &Reminder) -> AppResult<()> {
 pub fn notify_test(app: &AppHandle) -> AppResult<()> {
     app.notification()
         .builder()
-        .title("Papa.app test notification")
+        .title("Ormma test notification")
         .body("The reminder engine notification path works.")
         .show()
         .map_err(|e| {

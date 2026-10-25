@@ -22,7 +22,6 @@ import {
   resumeReminders,
   setAutostart,
   setReminderEnabled,
-  snoozeReminder,
   triggerReminderTest,
   updateReminder,
   updateSettings,
@@ -56,7 +55,6 @@ interface RemindersState {
   readonly update: (input: UpdateReminderInput) => Promise<Reminder | null>;
   readonly remove: (id: number) => Promise<boolean>;
   readonly toggle: (id: number, enabled: boolean) => Promise<boolean>;
-  readonly snooze: (id: number, minutes: number) => Promise<boolean>;
   readonly testNotification: () => Promise<boolean>;
   readonly pause: () => Promise<boolean>;
   readonly resume: () => Promise<boolean>;
@@ -201,18 +199,6 @@ export function useReminders(): RemindersState {
     }
   }, []);
 
-  const snooze = useCallback(async (id: number, minutes: number) => {
-    try {
-      const next = await snoozeReminder(id, minutes);
-      setReminders((prev) => prev.map((r) => (r.id === next.id ? next : r)));
-      setError(null);
-      return true;
-    } catch (err) {
-      setError(toMessage(err));
-      return false;
-    }
-  }, []);
-
   const testNotification = useCallback(async () => {
     try {
       await triggerReminderTest();
@@ -286,7 +272,6 @@ export function useReminders(): RemindersState {
     update,
     remove,
     toggle,
-    snooze,
     testNotification,
     pause,
     resume,

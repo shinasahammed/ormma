@@ -3,7 +3,7 @@
 //! Time model (read carefully):
 //! - Schedules (`scheduled_time`) are wall-clock times in the user's **local**
 //!   time zone: `HH:MM` for daily/weekly, `YYYY-MM-DDTHH:MM` for once.
-//! - Persistence (`last_triggered_at`, `snoozed_until`) is **UTC epoch
+//! - Persistence (`last_triggered_at`) is **UTC epoch
 //!   seconds** — an absolute instant, never a wall-clock string.
 //! - `now` enters the engine as `DateTime<Local>`; comparisons happen on
 //!   epoch seconds derived from that instant. Time zones are never mixed.
@@ -22,11 +22,6 @@ pub const RECURRING_GRACE_SECS: i64 = 30 * 60;
 /// late. Older ones are auto-disabled as missed instead of firing stale.
 pub const ONCE_GRACE_SECS: i64 = 24 * 3600;
 
-/// A snooze is explicit user intent, so it fires even if reached while the
-/// app was closed — unless it is older than this, in which case the stale
-/// snooze is cleared without firing.
-pub const SNOOZE_STALE_SECS: i64 = 24 * 3600;
-
 /// One consumed schedule occurrence.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FireAction {
@@ -34,15 +29,11 @@ pub struct FireAction {
     pub occurrence_epoch: i64,
     /// One-time reminders auto-disable after firing (see docs below).
     pub disable_after: bool,
-    /// True when the trigger came from an elapsed snooze.
-    pub from_snooze: bool,
 }
 
 /// Housekeeping the engine applies instead of firing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MaintenanceAction {
-    /// Drop a snooze that went stale while the app was closed.
-    ClearStaleSnooze,
     /// Disable a one-time reminder whose time passed long ago.
     DisableMissedOnce,
 }

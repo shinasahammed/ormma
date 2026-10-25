@@ -108,13 +108,6 @@ pub fn update_settings(state: State<'_, DbState>, settings: AppSettings) -> AppR
     with_state_mut(&state, |conn| db::update_settings(conn, &settings))
 }
 
-#[tauri::command]
-pub fn snooze_reminder(state: State<'_, DbState>, id: i64, minutes: i64) -> AppResult<Reminder> {
-    check_id(id)?;
-    // Range validation happens in `db::snooze_reminder` (`0` clears).
-    with_state(&state, |conn| db::snooze_reminder(conn, id, minutes))
-}
-
 /// Dev/verify helper: presents a fixed-content reminder in the top-center
 /// popup (the same path a fired reminder takes), plus the desktop
 /// notification as a best-effort extra. Touches no reminder state and never

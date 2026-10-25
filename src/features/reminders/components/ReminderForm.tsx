@@ -3,7 +3,7 @@ import { Button } from "../../../components/Button";
 import { SelectField, TextField } from "../../../components/Field";
 import { useTranslation } from "../../../lib/i18n";
 import { TONE_IDS } from "../../tones/tones";
-import type { ReminderKind, ScheduleType } from "../types";
+import type { ScheduleType } from "../types";
 import {
   defaultTimeFor,
   validateReminderForm,
@@ -106,27 +106,16 @@ export function ReminderForm({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <SelectField
-          id="reminder-kind"
-          label={t("form.kind")}
-          value={values.kind}
-          onChange={(e) => set("kind", e.target.value as ReminderKind)}
-        >
-          <option value="reminder">{t("form.kindReminder")}</option>
-          <option value="alarm">{t("form.kindAlarm")}</option>
-        </SelectField>
-        <SelectField
-          id="reminder-schedule"
-          label={t("form.repeats")}
-          value={values.scheduleType}
-          onChange={(e) => changeSchedule(e.target.value as ScheduleType)}
-        >
-          <option value="once">{t("form.once")}</option>
-          <option value="daily">{t("form.daily")}</option>
-          <option value="weekly">{t("form.weekly")}</option>
-        </SelectField>
-      </div>
+      <SelectField
+        id="reminder-schedule"
+        label={t("form.repeats")}
+        value={values.scheduleType}
+        onChange={(e) => changeSchedule(e.target.value as ScheduleType)}
+      >
+        <option value="once">{t("form.once")}</option>
+        <option value="daily">{t("form.daily")}</option>
+        <option value="weekly">{t("form.weekly")}</option>
+      </SelectField>
 
       <TextField
         id="reminder-time"
@@ -174,17 +163,6 @@ export function ReminderForm({
         </fieldset>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <TextField
-          id="reminder-snooze"
-          label={t("form.snooze")}
-          type="number"
-          min={0}
-          max={180}
-          value={values.snoozeDuration}
-          onChange={(e) => set("snoozeDuration", Number(e.target.value))}
-          error={errors.snoozeDuration}
-        />
         <SelectField
           id="reminder-tone"
           label={t("form.tone")}
@@ -200,7 +178,6 @@ export function ReminderForm({
             </option>
           ))}
         </SelectField>
-      </div>
 
       {serverError !== null && (
         <p role="alert" className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">

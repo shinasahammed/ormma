@@ -60,7 +60,7 @@ export default function App(): JSX.Element {
             transition={{ duration: 0.16 }}
           >
             {view === "home" && <HomeScreen data={data} now={now} />}
-            {view === "reminders" && <RemindersScreen data={data} now={now} />}
+            {view === "reminders" && <RemindersScreen data={data} />}
             {view === "settings" && <SettingsScreen data={data} />}
           </motion.div>
         </AnimatePresence>

@@ -21,7 +21,6 @@ type DialogState =
 
 interface RemindersScreenProps {
   data: ReturnType<typeof useReminders>;
-  now: Date;
 }
 
 function editInitial(reminder: Reminder): ReminderFormValues {
@@ -32,13 +31,12 @@ function editInitial(reminder: Reminder): ReminderFormValues {
     scheduleType: reminder.scheduleType,
     scheduledTime: reminder.scheduledTime,
     daysOfWeek: reminder.daysOfWeek ?? [],
-    snoozeDuration: reminder.snoozeDuration,
     tone: reminder.tone ?? "",
   };
 }
 
 /** Full reminder management: presets, list, shared create/edit form, delete confirm. */
-export function RemindersScreen({ data, now }: RemindersScreenProps): JSX.Element {
+export function RemindersScreen({ data }: RemindersScreenProps): JSX.Element {
   const { t } = useTranslation(data.settings?.language);
   const lang = data.settings?.language ?? "en";
   const [dialog, setDialog] = useState<DialogState>({ mode: "closed" });
@@ -55,7 +53,6 @@ export function RemindersScreen({ data, now }: RemindersScreenProps): JSX.Elemen
         scheduleType: values.scheduleType,
         scheduledTime: values.scheduledTime,
         daysOfWeek: values.scheduleType === "weekly" ? [...values.daysOfWeek] : [],
-        snoozeDuration: values.snoozeDuration,
         tone: values.tone.trim().length === 0 ? "" : values.tone.trim(),
       });
       if (saved !== null) {
@@ -128,10 +125,8 @@ export function RemindersScreen({ data, now }: RemindersScreenProps): JSX.Elemen
         ) : (
           <ReminderList
             reminders={data.reminders}
-            now={now}
             lang={lang}
             onToggle={data.toggle}
-            onSnooze={data.snooze}
             onEdit={(reminder) => setDialog({ mode: "edit", reminder })}
             onDelete={(reminder) => setDialog({ mode: "delete", reminder })}
           />

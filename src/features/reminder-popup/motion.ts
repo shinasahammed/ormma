@@ -14,8 +14,7 @@ export const POPUP_EXIT_DELAY_REDUCED_MS = 30;
 /**
  * Floating-bubble presentation lifetime per reminder. Firing the timer only
  * dismisses presentation (the occurrence was already consumed) — it advances
- * the queue exactly like Done. Paused while the snooze menu is open so the
- * popup never vanishes mid-choice.
+ * the queue exactly like Done.
  *
  * The duration is a persisted setting (seconds); this constant is only the
  * fallback before settings load.
@@ -64,7 +63,7 @@ import type { TargetAndTransition, Transition, Variants } from "framer-motion";
  * Entrance (~1.25s): notch idles (NOTCH_IDLE_S) → expands (NOTCH_EXPAND_S) →
  * Pip peeks up (AVATAR_PEEK_DELAY_S) → card text fades in (CARD_REVEAL_DELAY_S).
  * Auto-dismiss exit reverses the hierarchy (card → Pip → notch, ~0.4s);
- * a manual dismiss (click / Enter / Esc / snooze) collapses everything at
+ * a manual dismiss (click / Enter / Esc) collapses everything at
  * once in COLLAPSE_MANUAL_S.
  */
 

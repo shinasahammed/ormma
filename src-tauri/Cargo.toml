@@ -1,10 +1,10 @@
 [package]
-name = "papa-app"
+name = "ormma-app"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.77.2"
-description = "Papa.app — Linux desktop foundation (Tauri 2 + Rust)"
-authors = ["Papa.app"]
+description = "Ormma — Linux desktop foundation (Tauri 2 + Rust)"
+authors = ["Ormma"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

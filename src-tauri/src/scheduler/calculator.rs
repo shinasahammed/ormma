@@ -8,7 +8,6 @@ use chrono::{DateTime, Datelike, Local, NaiveDateTime, NaiveTime, TimeZone};
 
 use super::types::{
     Decision, FireAction, MaintenanceAction, ONCE_GRACE_SECS, RECURRING_GRACE_SECS,
-    SNOOZE_STALE_SECS,
 };
 use crate::models::Reminder;
 
@@ -102,24 +101,6 @@ pub fn decide(reminder: &Reminder, now: DateTime<Local>) -> Decision {
     }
     let now_ts = now.timestamp();
 
-    // Explicit snooze intent wins over the base schedule. While a future
-    // snooze is pending, the normal schedule is suppressed.
-    if let Some(until) = reminder.snoozed_until {
-        if now_ts < until {
-            return Decision::Skip;
-        }
-        if now_ts - until <= SNOOZE_STALE_SECS {
-            return Decision::Fire(FireAction {
-                occurrence_epoch: until,
-                // A one-time reminder re-enabled by its snooze is consumed
-                // again once the snooze fires.
-                disable_after: reminder.schedule_type == "once",
-                from_snooze: true,
-            });
-        }
-        return Decision::Maintain(MaintenanceAction::ClearStaleSnooze);
-    }
-
     match reminder.schedule_type.as_str() {
         "once" => {
             let naive = match parse_once_local(&reminder.scheduled_time) {
@@ -142,7 +123,6 @@ pub fn decide(reminder: &Reminder, now: DateTime<Local>) -> Decision {
             Decision::Fire(FireAction {
                 occurrence_epoch: occurrence,
                 disable_after: true,
-                from_snooze: false,
             })
         }
         "daily" | "weekly" => {
@@ -169,7 +149,6 @@ pub fn decide(reminder: &Reminder, now: DateTime<Local>) -> Decision {
             Decision::Fire(FireAction {
                 occurrence_epoch: occurrence,
                 disable_after: false,
-                from_snooze: false,
             })
         }
         // Corrupt/unknown schedule data never fires.
@@ -195,12 +174,10 @@ mod tests {
             schedule_type: "daily".to_string(),
             scheduled_time: "10:00".to_string(),
             days_of_week: None,
-            snooze_duration: 5,
             tone: None,
             created_at: 0,
             updated_at: 0,
             last_triggered_at: None,
-            snoozed_until: None,
         }
     }
 
@@ -225,7 +202,6 @@ mod tests {
         Decision::Fire(FireAction {
             occurrence_epoch,
             disable_after: false,
-            from_snooze: false,
         })
     }
 
@@ -250,7 +226,6 @@ mod tests {
             Decision::Fire(FireAction {
                 occurrence_epoch: occ,
                 disable_after: true,
-                from_snooze: false
             })
         );
         assert_eq!(
@@ -258,7 +233,6 @@ mod tests {
             Decision::Fire(FireAction {
                 occurrence_epoch: occ,
                 disable_after: true,
-                from_snooze: false
             })
         );
         assert_eq!(
@@ -266,7 +240,6 @@ mod tests {
             Decision::Fire(FireAction {
                 occurrence_epoch: occ,
                 disable_after: true,
-                from_snooze: false
             })
         );
     }
@@ -403,49 +376,6 @@ mod tests {
         let _ = r;
     }
 
-    // --- snooze ---
-
-    #[test]
-    fn snooze_future_suppresses_schedule() {
-        // Daily 10:00 is due at 10:05, but a snooze until 11:00 wins.
-        let now = at(2026, 9, 21, 10, 5, 0);
-        let r = Reminder {
-            snoozed_until: Some(at(2026, 9, 21, 11, 0, 0).timestamp()),
-            ..base()
-        };
-        assert_eq!(decide(&r, now), Decision::Skip);
-    }
-
-    #[test]
-    fn snooze_elapsed_fires_from_snooze() {
-        let until = at(2026, 9, 21, 10, 30, 0).timestamp();
-        let r = Reminder {
-            snoozed_until: Some(until),
-            ..base()
-        };
-        assert_eq!(
-            decide(&r, at(2026, 9, 21, 10, 30, 0)),
-            Decision::Fire(FireAction {
-                occurrence_epoch: until,
-                disable_after: false,
-                from_snooze: true
-            })
-        );
-    }
-
-    #[test]
-    fn snooze_stale_is_cleared() {
-        let until = at(2026, 9, 18, 10, 30, 0).timestamp();
-        let r = Reminder {
-            snoozed_until: Some(until),
-            ..base()
-        };
-        assert_eq!(
-            decide(&r, at(2026, 9, 21, 10, 30, 0)),
-            Decision::Maintain(MaintenanceAction::ClearStaleSnooze)
-        );
-    }
-
     // --- guards ---
 
     #[test]
@@ -455,12 +385,14 @@ mod tests {
             ..once_at("2026-09-21T10:00")
         };
         assert_eq!(decide(&r, at(2026, 9, 21, 10, 5, 0)), Decision::Skip);
-        let snoozed = Reminder {
+        let disabled_daily = Reminder {
             enabled: false,
-            snoozed_until: Some(at(2026, 9, 21, 10, 0, 0).timestamp()),
             ..base()
         };
-        assert_eq!(decide(&snoozed, at(2026, 9, 21, 10, 5, 0)), Decision::Skip);
+        assert_eq!(
+            decide(&disabled_daily, at(2026, 9, 21, 10, 5, 0)),
+            Decision::Skip
+        );
     }
 
     #[test]

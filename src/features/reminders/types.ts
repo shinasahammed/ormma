@@ -6,7 +6,7 @@
  * redefine these in components.
  */
 
-export type ReminderKind = "reminder" | "alarm";
+export type ReminderKind = "reminder";
 export type ScheduleType = "once" | "daily" | "weekly";
 import type { ThemePreference as CanonicalThemePreference } from "../../lib/theme";
 
@@ -24,16 +24,12 @@ export interface Reminder {
   scheduledTime: string;
   /** Sorted weekdays 0 (Sun)..6 (Sat); null unless weekly. */
   daysOfWeek: number[] | null;
-  /** Snooze length in minutes. */
-  snoozeDuration: number;
   /** Tone id; null = default tone. */
   tone: string | null;
   /** Unix epoch seconds. */
   createdAt: number;
   updatedAt: number;
   lastTriggeredAt: number | null;
-  /** Snooze state (Phase 3): epoch seconds when the snooze elapses; null = not snoozed. */
-  snoozedUntil: number | null;
 }
 
 export interface CreateReminderInput {
@@ -44,7 +40,6 @@ export interface CreateReminderInput {
   scheduleType: ScheduleType;
   scheduledTime: string;
   daysOfWeek?: number[] | null;
-  snoozeDuration: number;
   tone?: string | null;
 }
 
@@ -59,7 +54,6 @@ export interface UpdateReminderInput {
   scheduledTime?: string;
   /** Omit = unchanged; [] clears to null. */
   daysOfWeek?: number[] | null;
-  snoozeDuration?: number;
   /** Omit = unchanged; "" clears to null. */
   tone?: string | null;
 }
@@ -75,7 +69,6 @@ export interface AppSettings {
   notificationsEnabled: boolean;
   autostartEnabled: boolean;
   launchMinimized: boolean;
-  snoozeDuration: number;
   reducedMotion: boolean;
   /** Custom companion image (data URL, resized client-side) or null = Pip. */
   companionAvatar: string | null;
@@ -118,7 +111,5 @@ export interface ReminderDuePayload {
   scheduleType: string;
   scheduledTime: string;
   daysOfWeek: number[] | null;
-  /** The reminder's own snooze length in minutes (0 = none configured). */
-  snoozeDuration: number;
   tone: string | null;
 }

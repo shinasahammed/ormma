@@ -72,19 +72,3 @@ export function todaysReminders(reminders: Reminder[], now: Date): Reminder[] {
 export function byScheduledTime(a: Reminder, b: Reminder): number {
   return timeOfDay(a.scheduledTime).localeCompare(timeOfDay(b.scheduledTime)) || a.scheduledTime.localeCompare(b.scheduledTime);
 }
-
-/** "Snoozed · back 14:35" (today) or "Snoozed · back Tue 09:10". */
-export function describeSnoozeUntil(
-  snoozedUntil: number,
-  now: Date,
-  lang: string | null = "en",
-): string {
-  const at = new Date(snoozedUntil * 1000);
-  const locale = lang ?? undefined;
-  const time = at.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: false });
-  if (localDateKey(at) === localDateKey(now)) {
-    return translate("schedule.snoozedToday", lang, { time });
-  }
-  const day = WEEKDAY_SHORT[at.getDay()] ?? "";
-  return translate("schedule.snoozedDay", lang, { day, time });
-}

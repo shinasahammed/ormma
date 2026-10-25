@@ -12,7 +12,6 @@ describe("preset structure", () => {
     expect(new Set(ids).size).toBe(ids.length);
     for (const preset of PRESETS) {
       expect(preset.titleKey.length).toBeGreaterThan(0);
-      expect(preset.snoozeDuration).toBeGreaterThanOrEqual(0);
       // Every preset must survive backend-equivalent validation once resolved.
       expect(validateReminderForm(presetToFormValues(preset, t))).toEqual({});
     }

@@ -1,8 +1,8 @@
 {
-  "name": "papa.app",
+  "name": "ormma",
   "version": "0.1.0",
   "private": true,
-  "description": "Papa.app — Linux desktop foundation (Tauri 2 + React + TypeScript + Vite)",
+  "description": "Ormma — Linux desktop foundation (Tauri 2 + React + TypeScript + Vite)",
   "type": "module",
   "scripts": {
     "dev": "vite",

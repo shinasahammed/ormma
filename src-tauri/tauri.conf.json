@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Papa.app",
+  "productName": "Ormma",
   "version": "0.1.0",
-  "identifier": "app.papa.desktop",
+  "identifier": "app.ormma.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Papa.app",
+        "title": "Ormma",
         "width": 960,
         "height": 640,
         "resizable": true,
@@ -36,7 +36,7 @@
     ],
     "category": "Utility",
     "shortDescription": "Local-first reminders for Linux",
-    "longDescription": "Papa.app is a calm, local-first reminder companion for the Linux desktop.",
+    "longDescription": "Ormma is a calm, local-first reminder companion for the Linux desktop.",
     "linux": {
       "deb": {
         "depends": ["libwebkit2gtk-4.1-0", "libsoup-3.0-0", "librsvg2-2"]

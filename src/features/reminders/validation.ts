@@ -18,12 +18,11 @@ export interface ReminderFormValues {
   scheduleType: ScheduleType;
   scheduledTime: string;
   daysOfWeek: number[];
-  snoozeDuration: number;
   tone: string;
 }
 
 export type FormErrors = Partial<
-  Record<"title" | "scheduledTime" | "daysOfWeek" | "snoozeDuration" | "message" | "tone", string>
+  Record<"title" | "scheduledTime" | "daysOfWeek" | "message" | "tone", string>
 >;
 
 export const EMPTY_VALUES: ReminderFormValues = {
@@ -33,7 +32,6 @@ export const EMPTY_VALUES: ReminderFormValues = {
   scheduleType: "daily",
   scheduledTime: "10:00",
   daysOfWeek: [1],
-  snoozeDuration: 5,
   tone: "",
 };
 
@@ -84,10 +82,6 @@ export function validateReminderForm(
     }
   }
 
-  if (!Number.isInteger(values.snoozeDuration) || values.snoozeDuration < 0 || values.snoozeDuration > 180) {
-    errors.snoozeDuration = t("validation.snoozeRange");
-  }
-
   if (charCount(values.tone) > 100) {
     errors.tone = t("validation.toneLong");
   }
@@ -107,7 +101,6 @@ export function toCreateInput(values: ReminderFormValues): CreateReminderInput {
     scheduleType: values.scheduleType,
     scheduledTime: values.scheduledTime,
     daysOfWeek: values.scheduleType === "weekly" ? [...values.daysOfWeek].sort((a, b) => a - b) : null,
-    snoozeDuration: values.snoozeDuration,
     tone: tone.length === 0 ? null : tone,
   };
 }

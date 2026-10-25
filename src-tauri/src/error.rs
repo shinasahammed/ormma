@@ -78,14 +78,14 @@ impl std::error::Error for AppError {}
 
 /// stderr diagnostics for the Rust side (safe: never forwarded to the UI).
 pub fn log_error(detail: &str) {
-    eprintln!("[papa.app] ERROR: {detail}");
+    eprintln!("[ormma] ERROR: {detail}");
 }
 
 /// Non-error lifecycle logging. Only for infrequent events (startup, ticks
 /// with activity, maintenance) — never per-reminder tick spam, and never
 /// user content.
 pub fn log_info(detail: &str) {
-    eprintln!("[papa.app] INFO: {detail}");
+    eprintln!("[ormma] INFO: {detail}");
 }
 
 pub type AppResult<T> = Result<T, AppError>;

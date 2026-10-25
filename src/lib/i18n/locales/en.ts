@@ -33,7 +33,7 @@ export const en: Dictionary = {
   "home.todayTitle": "Today's reminders",
   "home.loading": "Loading reminders…",
   "home.emptyTitle": "A clear day",
-  "home.emptyCopy": "Nothing scheduled for today. Add a reminder and Papa will keep it in mind.",
+  "home.emptyCopy": "Nothing scheduled for today. Add a reminder and Ormma will keep it in mind.",
   "home.add": "+ Add reminder",
   "home.testNotification": "Test notification",
 
@@ -44,7 +44,7 @@ export const en: Dictionary = {
   "reminders.add": "+ Add reminder",
   "reminders.loading": "Loading reminders…",
   "reminders.emptyTitle": "Nothing scheduled yet",
-  "reminders.emptyCopy": "Add your first reminder and let Papa take care of the little things.",
+  "reminders.emptyCopy": "Add your first reminder and let Ormma take care of the little things.",
   "reminders.emptyAction": "+ Add your first reminder",
   "reminders.editTitle": "Edit reminder",
   "reminders.saving": "Saving…",
@@ -56,7 +56,6 @@ export const en: Dictionary = {
   // Reminder card
   "card.enabled": "On — enable to resume schedule",
   "card.disabledNote": "Off — enable to resume schedule",
-  "card.snooze": "Snooze {minutes}m",
   "card.edit": "Edit",
   "card.delete": "Delete",
   "card.enableLabel": "Enable {title}",
@@ -65,7 +64,7 @@ export const en: Dictionary = {
 
   // Reminder form
   "form.addTitle": "Add reminder",
-  "form.addSubtitle": "Papa will take care of the rest.",
+  "form.addSubtitle": "Ormma will take care of the rest.",
   "form.addSubmit": "Add reminder",
   "form.adding": "Adding…",
   "form.saveSubmit": "Save changes",
@@ -74,9 +73,6 @@ export const en: Dictionary = {
   "form.message": "Message",
   "form.messageOptional": "(optional)",
   "form.messagePlaceholder": "Something kind to your future self",
-  "form.kind": "Kind",
-  "form.kindReminder": "Reminder",
-  "form.kindAlarm": "Alarm",
   "form.repeats": "Repeats",
   "form.once": "Once",
   "form.daily": "Every day",
@@ -84,7 +80,6 @@ export const en: Dictionary = {
   "form.dateAndTime": "Date and time",
   "form.time": "Time",
   "form.days": "Days",
-  "form.snooze": "Snooze (minutes)",
   "form.tone": "Tone",
   "form.toneDefault": "Default",
   "form.toneHint": "Uses your default tone unless changed here.",
@@ -98,14 +93,11 @@ export const en: Dictionary = {
   "validation.dateTimeInvalid": "Pick a date and time.",
   "validation.daysRequired": "Choose at least one day.",
   "validation.daysInvalid": "Days must be Sunday–Saturday.",
-  "validation.snoozeRange": "Snooze must be 0–180 minutes.",
   "validation.toneLong": "Tone names stay under 100 characters.",
 
   // Schedule descriptions
   "schedule.daily": "Every day · {time}",
   "schedule.once": "{date} · {time}",
-  "schedule.snoozedToday": "Snoozed · back {time}",
-  "schedule.snoozedDay": "Snoozed · back {day} {time}",
 
   // Settings
   "settings.title": "Settings",
@@ -113,7 +105,6 @@ export const en: Dictionary = {
   "settings.loading": "Loading settings…",
   "settings.unavailable": "Settings are unavailable right now.",
   "settings.reminders": "Reminders",
-  "settings.defaultSnooze": "Default snooze (minutes)",
   "settings.popupDuration": "Popup duration (seconds)",
   "settings.defaultTone": "Default reminder tone",
   "settings.notifications": "Notifications",
@@ -188,14 +179,9 @@ export const en: Dictionary = {
   "day.saturday": "Saturday",
 
   // Popup
-  "popup.greeting": "Papa here",
+  "popup.greeting": "Ormma here",
   "popup.dismiss": "Dismiss reminder",
   "popup.more": "+{count} more",
-  "popup.snooze": "Snooze ▾",
-  "popup.snoozeFor": "Snooze for",
-  "popup.minutes": "{count} minutes",
-  "popup.oneHour": "1 hour",
   "popup.done": "Done",
   "popup.kindReminder": "reminder",
-  "popup.kindAlarm": "alarm",
 };

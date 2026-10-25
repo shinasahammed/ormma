@@ -27,14 +27,14 @@ import type {
 } from "../features/reminders/types";
 
 export interface AppInfo {
-  readonly name: "Papa.app";
+  readonly name: "Ormma";
   readonly version: string;
   readonly backend: "Tauri 2 + Rust";
 }
 
 export function getAppInfo(): AppInfo {
   return {
-    name: "Papa.app",
+    name: "Ormma",
     version: __APP_VERSION__,
     backend: "Tauri 2 + Rust",
   };
@@ -72,7 +72,7 @@ function toPlatformError(error: unknown, command: string): PlatformError {
   }
   // Tauri runtime/IPC failures (ACL denials, missing commands) reject with a
   // plain string. Keep it visible — it is the only clue to the real cause.
-  console.error(`[papa.app] ${command} failed:`, error);
+  console.error(`[ormma] ${command} failed:`, error);
   const detail = describeError(error);
   return {
     code: "INTERNAL_ERROR",
@@ -85,7 +85,7 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
     // Opened in a plain browser tab (e.g. localhost:1420) — no backend here.
     throw {
       code: "INTERNAL_ERROR",
-      message: "Desktop runtime unavailable — use the Papa.app window, not a browser tab.",
+      message: "Desktop runtime unavailable — use the Ormma window, not a browser tab.",
     } satisfies PlatformError;
   }
   try {
@@ -121,11 +121,6 @@ export function deleteReminder(id: number): Promise<void> {
 
 export function setReminderEnabled(id: number, enabled: boolean): Promise<Reminder> {
   return call<Reminder>("set_reminder_enabled", { id, enabled });
-}
-
-/** Snooze `minutes` (0 clears). State persists; the engine refires on elapse. */
-export function snoozeReminder(id: number, minutes: number): Promise<Reminder> {
-  return call<Reminder>("snooze_reminder", { id, minutes });
 }
 
 /** Dev/verify helper: fixed-content notification, no reminder side effects. */

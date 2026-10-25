@@ -7,7 +7,7 @@ import { Toggle } from "../../components/Toggle";
 import { useTranslation } from "../../lib/i18n";
 import { CreateReminderDialog } from "../reminders/components/CreateReminderDialog";
 import type { useReminders } from "../reminders/useReminders";
-import { describeSnoozeUntil, greetingForHour, timeOfDay, todaysReminders } from "../reminders/utils";
+import { greetingForHour, timeOfDay, todaysReminders } from "../reminders/utils";
 
 interface HomeScreenProps {
   data: ReturnType<typeof useReminders>;
@@ -76,11 +76,6 @@ export function HomeScreen({ data, now }: HomeScreenProps): JSX.Element {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{reminder.title}</span>
-                  {reminder.snoozedUntil !== null && (
-                    <span className="t-caption text-warning">
-                      {describeSnoozeUntil(reminder.snoozedUntil, now, locale)}
-                    </span>
-                  )}
                 </span>
                 <Toggle
                   checked={reminder.enabled}
