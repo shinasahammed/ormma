@@ -64,3 +64,7 @@ intentionally Linux-only (`deb`, `appimage`).
 
 See `docs/RELEASE_CHECKLIST.md` — automated checks plus the GUI-gated
 matrix (tray, popup, notifications, autostart, lifecycle, Linux DEs).
+
+## License
+
+MIT — see [LICENSE](LICENSE).
