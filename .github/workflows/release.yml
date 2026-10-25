@@ -1,19 +1,54 @@
 name: Release
 
+# Runs when `development` is promoted to `production`. The release tag comes
+# from the app version, so bump it (package.json, src-tauri/Cargo.toml,
+# src-tauri/tauri.conf.json) before opening the production pull request.
+# If `v<version>` is already released, the run does nothing.
+
 on:
   push:
-    tags: ["v*"]
+    branches: [production]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  build:
+  release:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
+      - name: Read app version
+        id: version
+        run: |
+          app=$(jq -r .version src-tauri/tauri.conf.json)
+          pkg=$(jq -r .version package.json)
+          cargo=$(grep -m1 '^version' src-tauri/Cargo.toml | cut -d'"' -f2)
+          if [ "$app" != "$pkg" ] || [ "$app" != "$cargo" ]; then
+            echo "::error::Version mismatch: tauri.conf.json=$app package.json=$pkg Cargo.toml=$cargo"
+            exit 1
+          fi
+          echo "version=$app" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether this version is already released
+        id: released
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "::notice::v${VERSION} already exists, nothing to release. Bump the version to publish a new release."
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "done=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install system dependencies
+        if: steps.released.outputs.done == 'false'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -21,26 +56,30 @@ jobs:
             libayatana-appindicator3-dev libxdo-dev patchelf
 
       - uses: actions/setup-node@v4
+        if: steps.released.outputs.done == 'false'
         with:
           node-version: 22
           cache: npm
 
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.released.outputs.done == 'false'
 
       - uses: swatinem/rust-cache@v2
+        if: steps.released.outputs.done == 'false'
         with:
           workspaces: src-tauri
 
       - run: npm ci
+        if: steps.released.outputs.done == 'false'
 
-      # Builds the .deb and .AppImage and attaches them to a *draft* release,
-      # so nothing is public until the draft is reviewed and published.
+      # Builds the .deb and .AppImage, tags this commit and publishes the release.
       - uses: tauri-apps/tauri-action@v0
+        if: steps.released.outputs.done == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: Ormma ${{ github.ref_name }}
-          releaseBody: See the assets below to download the .deb or .AppImage.
-          releaseDraft: true
+          tagName: v${{ steps.version.outputs.version }}
+          releaseName: Ormma v${{ steps.version.outputs.version }}
+          generateReleaseNotes: true
+          releaseDraft: false
           prerelease: false

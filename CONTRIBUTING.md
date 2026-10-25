@@ -22,6 +22,22 @@ npm install
 npx tauri dev
 ```
 
+## Branches and workflow
+
+| Branch | Purpose |
+| --- | --- |
+| `main` | Where contributions land. **Open your pull request against `main`.** |
+| `development` | The maintainer merges `main` here and tests it in the real app. |
+| `production` | Merging `development` here builds and publishes a release automatically. |
+
+1. Fork the repository (or, if you have write access, branch from `main`).
+2. Create a branch named after the change, e.g. `feature/snooze-presets` or
+   `fix/popup-wayland-position`.
+3. Open a pull request into `main`.
+
+Please don't open pull requests against `development` or `production`.
+Version bumps are done by the maintainer when promoting to `production`.
+
 ## Before opening a pull request
 
 These are the same checks CI runs:
