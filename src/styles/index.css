@@ -36,9 +36,9 @@
   --color-danger: #b3261e;
   --color-danger-soft: #f9dedc;
 
-  /* Companion nook: intentionally deep + warm in both themes, so the popup
-     avatar reads the same light or dark. Decorative only — no text sits on it. */
-  --color-nook: #2e2620;
+  /* Companion nook: pure black in both themes, so the popup avatar (and any
+     custom avatar image with a black backdrop) reads the same light or dark. Decorative only — no text sits on it. */
+  --color-nook: #000000;
 
   --shadow-card: 0 1px 2px rgb(33 29 25 / 0.05), 0 8px 24px -12px rgb(33 29 25 / 0.18);
   --shadow-pop: 0 12px 48px -12px rgb(33 29 25 / 0.35);
@@ -64,7 +64,7 @@
   --color-danger: #e5736b;
   --color-danger-soft: #431612;
 
-  --color-nook: #14100d;
+  --color-nook: #000000;
 
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -12px rgb(0 0 0 / 0.6);
   --shadow-pop: 0 16px 56px -12px rgb(0 0 0 / 0.7);

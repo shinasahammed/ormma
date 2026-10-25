@@ -87,7 +87,7 @@ export function ReminderPopup(): JSX.Element {
               {/* Stage 1 — BackgroundDropLayer: dark panel drops alone first.
                   Static frame for the avatar reveal; stays behind it (z-0). */}
               <motion.div
-                className="relative z-0 mb-4 w-[132px] shrink-0"
+                className="relative z-0 mb-2 w-[220px] shrink-0"
                 style={{ originX: 0.5, originY: 0 }}
                 variants={backgroundDropVariants}
                 initial={reduced ? false : "initial"}
@@ -113,7 +113,7 @@ export function ReminderPopup(): JSX.Element {
                           src={popup.avatar}
                           alt=""
                           aria-hidden="true"
-                          className="h-[148px] w-full object-cover"
+                          className="h-[136px] w-auto object-contain"
                         />
                       ) : (
                         <PopupAvatar blink={!reduced} className="-mb-5 h-[162px] w-auto" />
@@ -127,22 +127,26 @@ export function ReminderPopup(): JSX.Element {
                   avatar (left-anchored clip wipe, text never stretches) and
                   retracts first on exit. Tail points at the avatar. */}
               <motion.div
-                className="relative z-10 -ml-9 min-w-0 flex-1 rounded-[22px] bg-surface px-6 py-5 shadow-[var(--shadow-pop)] dark:border dark:border-line"
+                className="relative z-10 -ml-11 min-w-0 rounded-[24px] bg-white py-4 pr-7 pl-[17px] shadow-[var(--shadow-pop)]"
                 style={{ originX: 0, originY: 0.5 }}
                 variants={bubbleUnfoldVariants}
                 initial={reduced ? false : "initial"}
                 animate="animate"
                 exit={reduced ? flatExit : "exit"}
               >
-                <div
+                {/* Tail: a curved hook off the bubble's top-left, pointing at Pip. */}
+                <svg
                   aria-hidden="true"
-                  className="absolute top-1/2 -left-[7px] h-3.5 w-3.5 -translate-y-1/2 rotate-45 bg-surface"
-                />
-                <h1 className="text-[16px] leading-6 font-bold break-words text-ink">
+                  viewBox="-14 9 28 27"
+                  className="absolute top-[9px] -left-3.5 h-[27px] w-7 fill-white"
+                >
+                  <path d="M-14 18C-13 26-8 33 0 36L14 36L14 9L10 9C8 11 6 14 4 16C-1 20-9 20-14 18Z" />
+                </svg>
+                <h1 className="text-[16px] leading-5 font-bold break-words text-[#1a1a1a]">
                   {current.title}
                 </h1>
                 {current.message !== null && current.message.trim().length > 0 && (
-                  <p className="mt-1 max-h-[120px] overflow-y-auto text-[13px] leading-5 break-words text-muted">
+                  <p className="mt-1 max-h-[120px] overflow-y-auto text-[14px] leading-5 break-words text-[#6b6b70]">
                     {current.message}
                   </p>
                 )}
