@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+dist/
+dist-ssr/
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/
+
+# Vite / TS
+*.local
+vite.config.ts.timestamp-*
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+/* Papa.app design tokens (Phase 5).
+ *
+ * Warm, calm, premium companion aesthetic. Single token layer: components use
+ * `bg-paper text-ink border-line ...` — never raw hex. Dark mode is class
+ * driven (`.dark` on <html>, applied from persisted settings) so the app
+ * theme setting actually works instead of following the OS blindly.
+ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans:
+    system-ui, -apple-system, "Segoe UI", Roboto, "Ubuntu", "Cantarell",
+    "Noto Sans", sans-serif;
+
+  /* Warm paper surfaces */
+  --color-paper: #faf7f1;
+  --color-surface: #ffffff;
+  --color-raised: #f3eee4;
+  --color-ink: #211d19;
+  --color-muted: #6e6257;
+  --color-line: #e6ddcf;
+
+  /* Terracotta accent */
+  --color-accent: #b64a24;
+  --color-accent-strong: #93380f;
+  --color-accent-soft: #f7e3d7;
+  --color-on-accent: #fffaf5;
+
+  --color-success: #2f7d4f;
+  --color-success-soft: #e0f0e6;
+  --color-warning: #9a6b12;
+  --color-warning-soft: #f8ecd0;
+  --color-danger: #b3261e;
+  --color-danger-soft: #f9dedc;
+
+  /* Companion nook: intentionally deep + warm in both themes, so the popup
+     avatar reads the same light or dark. Decorative only — no text sits on it. */
+  --color-nook: #2e2620;
+
+  --shadow-card: 0 1px 2px rgb(33 29 25 / 0.05), 0 8px 24px -12px rgb(33 29 25 / 0.18);
+  --shadow-pop: 0 12px 48px -12px rgb(33 29 25 / 0.35);
+}
+
+.dark {
+  --color-paper: #1b1713;
+  --color-surface: #26211c;
+  --color-raised: #2f2922;
+  --color-ink: #f5efe6;
+  --color-muted: #a89a8b;
+  --color-line: #3d362d;
+
+  --color-accent: #e08054;
+  --color-accent-strong: #f0a37e;
+  --color-accent-soft: #3d2417;
+  --color-on-accent: #241109;
+
+  --color-success: #6fbf8f;
+  --color-success-soft: #16301f;
+  --color-warning: #d9a83f;
+  --color-warning-soft: #3a2c10;
+  --color-danger: #e5736b;
+  --color-danger-soft: #431612;
+
+  --color-nook: #14100d;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -12px rgb(0 0 0 / 0.6);
+  --shadow-pop: 0 16px 56px -12px rgb(0 0 0 / 0.7);
+
+  color-scheme: dark;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Type scale: display 30 / h1 22 / h2 15 / body 14 / caption+label 12. */
+.t-display {
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.t-h1 {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.t-h2 {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 650;
+}
+.t-body {
+  font-size: 14px;
+  line-height: 21px;
+}
+.t-caption {
+  font-size: 12px;
+  line-height: 17px;
+}
+.t-label {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Visible keyboard focus everywhere (a11y). */
+:where(button, input, select, textarea, a, [role="switch"]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

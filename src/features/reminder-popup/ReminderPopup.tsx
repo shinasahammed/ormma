@@ -1,0 +1,191 @@
+import { useEffect, useRef } from "react";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
+import {
+  avatarHover,
+  avatarHoverTransition,
+  avatarRiseVariants,
+  backgroundDropVariants,
+  bubbleUnfoldVariants,
+  flatExit,
+} from "./motion";
+import { SNOOZE_PRESETS, useReminderPopup } from "./useReminderPopup";
+import { PopupAvatar } from "./PopupAvatar";
+import { snoozeOptions } from "./types";
+
+/**
+ * Companion popup as a staged top-center reveal (BACKGROUND DROP → PIP
+ * REVEAL → PIP SETTLE → BUBBLE EXPANSION) on the transparent window:
+ * just the companion and a clean speech bubble (bold title + soft
+ * subtitle) — no headers, pills, or buttons.
+ *
+ * Layers (each declares its own staged variants; sequencing needs no timers):
+ * - BackgroundDropLayer: dark panel drops alone first.
+ * - AvatarRevealLayer: avatar rises clipped from inside the panel, settles.
+ * - BubbleRevealLayer: bubble unfolds rightward from the avatar (clip wipe,
+ *   text never stretches), retracts first on exit.
+ * The section itself is a static frame keyed by reminder id, so every queued
+ * item enters cleanly and the whole notification still dismisses as one.
+ *
+ * - Clicking anywhere (or Enter/Esc) dismisses, exactly like Done.
+ * - Each presentation auto-dismisses after the configured duration and
+ *   advances the queue.
+ * - `S` opens the snooze menu; it pauses auto-dismiss while open.
+ * - Presentation only: the occurrence was already consumed by the Rust
+ *   scheduler, so dismissing never touches schedule state.
+ */
+export function ReminderPopup(): JSX.Element {
+  const popup = useReminderPopup();
+  const { t } = popup;
+  const current = popup.leaving ? null : popup.queue.current;
+  const sectionRef = useRef<HTMLElement>(null);
+  // Reduced motion: transforms are stripped by MotionConfig; clip-path is
+  // not, so layers render settled (initial={false}) and exit with a plain
+  // fade — fully functional, minimal movement.
+  const reduced = popup.motion === "always";
+
+  useEffect(() => {
+    if (current !== null) {
+      sectionRef.current?.focus();
+    }
+  }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function onKeyDown(event: React.KeyboardEvent): void {
+    if (event.key === "Escape") {
+      // Dismiss the snooze menu first; only hide the popup when it is closed.
+      if (popup.snoozeOpen) {
+        popup.toggleSnoozeMenu();
+      } else {
+        popup.close();
+      }
+      return;
+    }
+    const target = event.target as HTMLElement;
+    const typing = ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName);
+    if ((event.key === "s" || event.key === "S") && !typing) {
+      popup.toggleSnoozeMenu();
+      return;
+    }
+    if (event.key === "Enter" && !popup.snoozeOpen && !typing) {
+      popup.done();
+    }
+  }
+
+  return (
+    <MotionConfig reducedMotion={popup.motion}>
+      <div className="flex h-screen flex-col bg-transparent px-5 pt-1.5 pb-5 text-ink" onKeyDown={onKeyDown}>
+        <AnimatePresence mode="wait">
+          {current !== null && (
+            <motion.section
+              key={current.id}
+              ref={sectionRef}
+              role="dialog"
+              tabIndex={-1}
+              aria-label={`${t("popup.greeting")}: ${current.title}`}
+              onClick={popup.done}
+              className="relative mx-auto mb-auto flex w-full items-end outline-none"
+            >
+              {/* Stage 1 — BackgroundDropLayer: dark panel drops alone first.
+                  Static frame for the avatar reveal; stays behind it (z-0). */}
+              <motion.div
+                className="relative z-0 mb-4 w-[132px] shrink-0"
+                variants={backgroundDropVariants}
+                initial={reduced ? false : "initial"}
+                animate="animate"
+                exit={reduced ? flatExit : "exit"}
+              >
+                <div className="h-[148px] overflow-hidden rounded-[24px] bg-nook shadow-[var(--shadow-card)]">
+                  {/* Stages 2–3 — AvatarRevealLayer: rises clipped from inside
+                      the panel (overflow-hidden), then settles. Hover lives on
+                      the inner wrapper so it never fights the entrance. */}
+                  <motion.div
+                    className="flex h-full items-end justify-center"
+                    variants={avatarRiseVariants}
+                    initial={reduced ? false : "initial"}
+                    animate="animate"
+                    exit={reduced ? flatExit : "exit"}
+                  >
+                    <motion.div
+                      whileHover={reduced ? undefined : { ...avatarHover, transition: avatarHoverTransition }}
+                    >
+                      {popup.avatar !== null ? (
+                        <img
+                          src={popup.avatar}
+                          alt=""
+                          aria-hidden="true"
+                          className="h-[148px] w-full object-cover"
+                        />
+                      ) : (
+                        <PopupAvatar className="-mb-5 h-[162px] w-auto" />
+                      )}
+                    </motion.div>
+                  </motion.div>
+                </div>
+              </motion.div>
+
+              {/* Stage 4 — BubbleRevealLayer: unfolds rightward from the
+                  avatar (left-anchored clip wipe, text never stretches) and
+                  retracts first on exit. Tail points at the avatar. */}
+              <motion.div
+                className="relative z-10 -ml-9 min-w-0 flex-1 rounded-[22px] bg-surface px-6 py-5 shadow-[var(--shadow-pop)] dark:border dark:border-line"
+                variants={bubbleUnfoldVariants}
+                initial={reduced ? false : "initial"}
+                animate="animate"
+                exit={reduced ? flatExit : "exit"}
+              >
+                <div
+                  aria-hidden="true"
+                  className="absolute top-1/2 -left-[7px] h-3.5 w-3.5 -translate-y-1/2 rotate-45 bg-surface"
+                />
+                <h1 className="text-[16px] leading-6 font-bold break-words text-ink">
+                  {current.title}
+                </h1>
+                {current.message !== null && current.message.trim().length > 0 && (
+                  <p className="mt-1 max-h-[120px] overflow-y-auto text-[13px] leading-5 break-words text-muted">
+                    {current.message}
+                  </p>
+                )}
+
+                {popup.error !== null && (
+                  <p role="alert" className="mt-2 rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
+                    {popup.error}
+                  </p>
+                )}
+
+                <AnimatePresence>
+                  {popup.snoozeOpen && (
+                    <motion.div
+                      role="menu"
+                      aria-label={t("popup.snoozeFor")}
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute top-full left-0 z-20 mt-2 w-44 overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-[var(--shadow-pop)]"
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.14 }}
+                    >
+                      <p className="t-label px-3 pt-1.5 pb-1 text-muted">{t("popup.snoozeFor")}</p>
+                      {snoozeOptions(current.snoozeDuration, SNOOZE_PRESETS).map((minutes) => (
+                        <button
+                          key={minutes}
+                          type="button"
+                          role="menuitem"
+                          disabled={popup.snoozing}
+                          onClick={() => popup.snooze(minutes)}
+                          className="block w-full px-3 py-1.5 text-left text-sm hover:bg-raised disabled:opacity-50"
+                        >
+                          {minutes === 60
+                            ? t("popup.oneHour")
+                            : t("popup.minutes", { count: minutes })}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            </motion.section>
+          )}
+        </AnimatePresence>
+      </div>
+    </MotionConfig>
+  );
+}

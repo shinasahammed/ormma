@@ -1,0 +1,32 @@
+{
+  "name": "papa.app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Papa.app — Linux desktop foundation (Tauri 2 + React + TypeScript + Vite)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.1.1",
+    "framer-motion": "^13.4.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.3",
+    "@tauri-apps/cli": "^2.1.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.1.3",
+    "typescript": "~5.6.3",
+    "vite": "^6.3.5",
+    "vitest": "^5.0.2"
+  }
+}
