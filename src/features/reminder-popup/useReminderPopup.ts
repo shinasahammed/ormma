@@ -17,6 +17,7 @@ import {
   POPUP_EXIT_DELAY_REDUCED_MS,
   resolveMotion,
   resolvePopupDismissMs,
+  type DismissKind,
   type MotionPreference,
 } from "./motion";
 import { advance, enqueue, EMPTY_QUEUE, type PopupQueue } from "./queue";
@@ -28,6 +29,8 @@ interface ReminderPopupState {
   readonly currentId: number | null;
   readonly queue: PopupQueue;
   readonly leaving: boolean;
+  /** Who started the current exit (drives staged vs. instant collapse). */
+  readonly leaveKind: DismissKind;
   readonly snoozeOpen: boolean;
   readonly snoozing: boolean;
   readonly error: string | null;
@@ -51,6 +54,7 @@ interface ReminderPopupState {
 export function useReminderPopup(): ReminderPopupState {
   const [queue, setQueue] = useState<PopupQueue>(EMPTY_QUEUE);
   const [leaving, setLeaving] = useState(false);
+  const [leaveKind, setLeaveKind] = useState<DismissKind>("auto");
   const [snoozeOpen, setSnoozeOpen] = useState(false);
   const [snoozing, setSnoozing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -195,14 +199,19 @@ export function useReminderPopup(): ReminderPopupState {
     }, delay);
   }, []);
 
-  const dismissCurrent = useCallback((): void => {
-    if (leavingRef.current || queueRef.current.current === null) {
-      return;
-    }
-    leavingRef.current = true;
-    setLeaving(true);
-    finishDismissal();
-  }, [finishDismissal]);
+  const dismissCurrent = useCallback(
+    (kind: DismissKind): void => {
+      if (leavingRef.current || queueRef.current.current === null) {
+        return;
+      }
+      leavingRef.current = true;
+      setLeaveKind(kind);
+      setLeaving(true);
+      finishDismissal();
+    },
+    [finishDismissal],
+  );
+  const dismissManually = useCallback((): void => dismissCurrent("manual"), [dismissCurrent]);
 
   // Auto-dismiss: each presentation floats for the configured duration,
   // then advances exactly like Done. Paused while the snooze menu is open
@@ -215,7 +224,7 @@ export function useReminderPopup(): ReminderPopupState {
     }
     const timer = window.setTimeout(() => {
       if (!leavingRef.current && queueRef.current.current?.id === currentId) {
-        dismissCurrent();
+        dismissCurrent("auto");
       }
     }, dismissMs);
     return () => window.clearTimeout(timer);
@@ -232,7 +241,7 @@ export function useReminderPopup(): ReminderPopupState {
         try {
           await snoozeReminder(current.id, minutes);
           setError(null);
-          dismissCurrent();
+          dismissCurrent("manual");
         } catch (err) {
           // Failure preserves the popup: message stays, retry allowed.
           setError(toMessage(err));
@@ -255,6 +264,7 @@ export function useReminderPopup(): ReminderPopupState {
     currentId,
     queue,
     leaving,
+    leaveKind,
     snoozeOpen,
     snoozing,
     error,
@@ -262,8 +272,8 @@ export function useReminderPopup(): ReminderPopupState {
     avatar: settings?.companionAvatar ?? null,
     t,
     locale,
-    done: dismissCurrent,
-    close: dismissCurrent,
+    done: dismissManually,
+    close: dismissManually,
     toggleSnoozeMenu,
     snooze,
     clearError,

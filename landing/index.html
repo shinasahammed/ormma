@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="en" data-theme="sunny">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<meta name="theme-color" content="#fafaf8" />
+<title>Papa — Someone's looking out for you</title>
+<meta name="description" content="Papa is a calm, local-first reminder companion that lives at the top of your screen." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --bg: #fafaf8;
+    --ink: #17171a;
+    --muted: #6d6d75;
+    --faint: #9a9aa3;
+    --line: rgba(23, 23, 26, 0.09);
+    --surface: #ffffff;
+    --shadow-sm: 0 1px 2px rgba(23, 23, 26, 0.04), 0 4px 14px rgba(23, 23, 26, 0.05);
+    --shadow-md: 0 2px 4px rgba(23, 23, 26, 0.04), 0 14px 36px rgba(23, 23, 26, 0.08);
+
+    --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+    /* mascot palette (swapped by [data-theme]) */
+    --m-body: #ffcf5c;
+    --m-paw: #f7b93e;
+    --m-cheek: #ff9b8a;
+
+    /* notch geometry */
+    --w: min(440px, calc(100vw - 48px)); /* visible width of the open card */
+    --h: 76px;                           /* visible height of the open card */
+    --gutter: 24px;                      /* extra box so the spring can overshoot */
+    --menubar: 30px;
+  }
+  [data-theme="mint"]  { --m-body: #7fd8b0; --m-paw: #5fc298; --m-cheek: #ff9db0; }
+  [data-theme="lilac"] { --m-body: #b9a4ff; --m-paw: #9d86f2; --m-cheek: #ff9fc0; }
+  [data-theme="sky"]   { --m-body: #7cc4ff; --m-paw: #58a8f2; --m-cheek: #ffa6a6; }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "DM Sans", Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  a { color: inherit; }
+
+  /* ───────────── faux menu bar ───────────── */
+  .menubar {
+    position: fixed; inset: 0 0 auto 0; height: var(--menubar); z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px;
+    background: rgba(250, 250, 248, 0.72);
+    -webkit-backdrop-filter: saturate(160%) blur(14px);
+    backdrop-filter: saturate(160%) blur(14px);
+    border-bottom: 1px solid rgba(23, 23, 26, 0.06);
+    font-size: 12.5px; font-weight: 500; color: #2a2a2f;
+    user-select: none;
+  }
+  .menubar__left, .menubar__right { display: flex; align-items: center; gap: 16px; }
+  .menubar__brand { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .menubar__dot {
+    width: 11px; height: 11px; border-radius: 50%;
+    background: var(--m-body); transition: background-color .25s ease;
+  }
+  .menubar__menu { color: #55555c; }
+  .menubar__right { color: #55555c; font-variant-numeric: tabular-nums; }
+
+  /* ───────────── the notch ───────────── */
+  .notch-anchor {
+    position: fixed; top: 0; left: 50%; z-index: 60;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  .notch {
+    position: relative;
+    width: calc(var(--w) + var(--gutter) * 2);
+    height: calc(var(--h) + var(--gutter));
+    transform-origin: 50% 0;
+    pointer-events: none; /* only the (clipped) card is interactive */
+    transition: transform .35s var(--spring), filter .4s ease;
+  }
+  .notch:hover { transform: scale(1.04); }
+  .notch.is-open { filter: drop-shadow(0 14px 22px rgba(20, 20, 24, 0.22)); }
+  .notch.quick { animation: squish .2s ease; }
+
+  /* The card is full-size; clip-path does the grow/shrink (paint only, no layout). */
+  .card {
+    position: absolute; inset: 0; z-index: 2;
+    background: #000;
+    pointer-events: auto;
+    clip-path: inset(0 calc(50% - 100px) calc(100% - 32px) calc(50% - 100px) round 0 0 18px 18px);
+    transition: clip-path .45s cubic-bezier(0.5, 0, 0.2, 1);
+  }
+  .notch.is-open .card {
+    clip-path: inset(0 var(--gutter) var(--gutter) var(--gutter) round 0 0 28px 28px);
+    transition: clip-path .6s var(--spring);
+  }
+  .notch.quick .card { transition: clip-path .2s ease-in; }
+
+  .card__inner {
+    position: absolute; top: 0; left: var(--gutter);
+    width: var(--w); height: var(--h);
+    padding: 0 64px 0 24px;
+    display: flex; align-items: center;
+    color: #fff;
+  }
+  .msg, .meta {
+    opacity: 0; transform: translateY(8px);
+    transition: opacity .15s ease, transform .15s ease;
+  }
+  .notch.is-open .msg, .notch.is-open .meta {
+    opacity: 1; transform: none;
+    transition: opacity .35s ease .3s, transform .35s ease .3s;
+  }
+  .notch.quick .msg, .notch.quick .meta { transition-duration: .1s; transition-delay: 0s; }
+
+  .msg-body { transition: opacity .125s linear; min-width: 0; }
+  .msg-body.swap { opacity: 0; }
+  .msg__cat {
+    display: block; font-size: 10.5px; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; color: #8d8d96; margin-bottom: 2px;
+  }
+  .msg__text {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    font-size: 15.5px; font-weight: 600; line-height: 1.25; letter-spacing: -0.005em;
+  }
+  .meta { position: absolute; inset: 0; pointer-events: none; }
+  .count {
+    position: absolute; right: 18px; bottom: 11px;
+    font-size: 11px; font-weight: 500; color: #8d8d96; font-variant-numeric: tabular-nums;
+  }
+  .close {
+    position: absolute; top: 10px; right: 12px;
+    width: 26px; height: 26px; border-radius: 50%;
+    display: grid; place-items: center;
+    border: 0; background: rgba(255, 255, 255, 0.12); color: #cfcfd6;
+    pointer-events: auto;
+    transition: background-color .2s ease, color .2s ease;
+  }
+  .close:hover { background: rgba(255, 255, 255, 0.24); color: #fff; }
+  .close:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .close svg { width: 10px; height: 10px; }
+  .notch:not(.is-open) .close { pointer-events: none; }
+
+  /* mascot: body sits behind the card, paws grip the card's bottom edge */
+  .mascot {
+    position: absolute; left: calc(var(--gutter) + 34px); top: calc(var(--h) - 22px);
+    width: 80px; height: 70px;
+    pointer-events: none;
+    opacity: 0; transform: translateY(-54px);
+    transition: transform .26s cubic-bezier(0.5, 0, 0.75, 0), opacity .08s linear .2s;
+  }
+  .mascot svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .mascot--back { z-index: 1; }
+  .mascot--paws { z-index: 3; }
+  .notch.mascot-up .mascot {
+    opacity: 1; transform: none;
+    transition: transform .55s var(--spring), opacity .12s linear;
+  }
+  .notch.quick .mascot { transition-duration: .1s; transition-delay: 0s; }
+
+  .m-body  { fill: var(--m-body);  transition: fill .25s ease; }
+  .m-paw   { fill: var(--m-paw);   transition: fill .25s ease; }
+  .m-cheek { fill: var(--m-cheek); transition: fill .25s ease; opacity: .65; }
+  .m-ink   { fill: #1b1b20; }
+  .m-shine { fill: #fff; }
+  .m-mouth { fill: none; stroke: #1b1b20; stroke-width: 2.2; stroke-linecap: round; }
+
+  .eyes-look  { transition: transform .18s ease-out; }
+  .eye-blink  { transform-box: fill-box; transform-origin: center; transition: transform .07s ease-in; }
+  .eye-blink.blink { transform: scaleY(.08); }
+
+  .paw-r { transform-box: fill-box; transform-origin: 50% 100%; }
+  .notch:hover .paw-r { animation: wave .8s ease-in-out infinite; }
+
+  @keyframes wave {
+    0%, 100% { transform: translateY(0) rotate(0); }
+    25%      { transform: translateY(-9px) rotate(-22deg); }
+    75%      { transform: translateY(-9px) rotate(18deg); }
+  }
+  @keyframes squish {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(.94); }
+  }
+
+  /* ───────────── hero ───────────── */
+  .hero {
+    position: relative; overflow: hidden;
+    padding: 156px 24px 80px;
+    text-align: center;
+  }
+  .hero::before {
+    content: ""; position: absolute; left: 50%; top: 120px; z-index: 0;
+    width: min(720px, 90vw); height: 420px; transform: translateX(-50%);
+    background: var(--m-body); opacity: .16; filter: blur(90px); border-radius: 50%;
+    transition: background-color .25s ease;
+    pointer-events: none;
+  }
+  .hero > * { position: relative; z-index: 1; }
+  .hero__in { animation: rise .8s var(--ease-out) both; }
+  .hero__in:nth-child(2) { animation-delay: .08s; }
+  .hero__in:nth-child(3) { animation-delay: .16s; }
+  .hero__in:nth-child(4) { animation-delay: .24s; }
+  .hero__in:nth-child(5) { animation-delay: .32s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+  h1 {
+    margin: 0 auto 20px;
+    font-size: clamp(42px, 8vw, 80px); line-height: 1.02; letter-spacing: -0.04em; font-weight: 700;
+  }
+  .sub {
+    margin: 0 auto 32px; max-width: 560px;
+    font-size: clamp(16px, 2.2vw, 19px); color: var(--muted);
+  }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    height: 50px; padding: 0 22px; border-radius: 999px;
+    font-weight: 600; font-size: 15.5px; text-decoration: none;
+    border: 1px solid transparent;
+    transition: transform .2s var(--ease-out), box-shadow .2s ease, background-color .2s ease;
+  }
+  .btn svg { width: 16px; height: 16px; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:active { transform: translateY(0) scale(.98); }
+  .btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .btn--primary { background: var(--ink); color: #fff; box-shadow: 0 8px 20px rgba(23, 23, 26, 0.2); }
+  .btn--primary:hover { box-shadow: 0 12px 26px rgba(23, 23, 26, 0.26); }
+  .btn--ghost { background: var(--surface); border-color: var(--line); box-shadow: var(--shadow-sm); }
+  .fine { margin: 16px 0 0; font-size: 13px; color: var(--faint); }
+
+  /* chips */
+  .studio {
+    margin: 52px auto 0; max-width: 760px; padding: 20px 24px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 24px;
+    box-shadow: var(--shadow-md);
+    display: grid; grid-template-columns: repeat(3, auto); gap: 18px 32px; justify-content: center;
+    text-align: left;
+  }
+  .studio__title {
+    grid-column: 1 / -1; margin: 0; font-size: 13px; color: var(--muted);
+  }
+  .studio__title b { color: var(--ink); font-weight: 600; }
+  .group__label {
+    display: block; margin-bottom: 8px;
+    font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--faint);
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    height: 34px; padding: 0 14px; border-radius: 999px;
+    background: #f3f3ef; border: 1px solid transparent;
+    font-size: 13.5px; font-weight: 500; color: #3c3c42;
+    transition: background-color .2s ease, color .2s ease, transform .15s ease;
+  }
+  .chip:hover { background: #ebebe5; }
+  .chip:active { transform: scale(.96); }
+  .chip:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .chip[aria-checked="true"] { background: var(--ink); color: #fff; }
+  .chip i { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+
+  /* ───────────── features ───────────── */
+  .features { max-width: 1080px; margin: 0 auto; padding: 56px 24px 96px; }
+  .features__head { text-align: center; margin-bottom: 44px; }
+  .features__head h2 { margin: 0 0 10px; font-size: clamp(28px, 4.4vw, 44px); letter-spacing: -0.03em; line-height: 1.1; }
+  .features__head p { margin: 0; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .feature {
+    padding: 26px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 22px; box-shadow: var(--shadow-sm);
+  }
+  .feature__icon {
+    width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
+    font-size: 22px; margin-bottom: 18px;
+  }
+  .feature h3 { margin: 0 0 6px; font-size: 18px; letter-spacing: -0.015em; }
+  .feature p { margin: 0; font-size: 15px; color: var(--muted); }
+
+  .js .reveal { opacity: 0; transform: translateY(24px); }
+  .reveal { transition: opacity .7s ease, transform .7s var(--ease-out); }
+  .js .reveal.in { opacity: 1; transform: none; }
+
+  footer {
+    padding: 28px 24px 48px; text-align: center; font-size: 13px; color: var(--faint);
+    border-top: 1px solid var(--line);
+  }
+
+  /* ───────────── responsive ───────────── */
+  @media (max-width: 860px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .studio { grid-template-columns: 1fr; gap: 16px; }
+  }
+  @media (max-width: 640px) {
+    .menubar__menu { display: none; }
+    .hero { padding-top: 148px; }
+    .grid { grid-template-columns: 1fr; }
+    .btn { width: 100%; justify-content: center; }
+    .cta { flex-direction: column; max-width: 340px; margin: 0 auto; }
+    .studio { padding: 18px; border-radius: 20px; }
+  }
+
+  /* ───────────── reduced motion ───────────── */
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      animation-delay: 0s !important;
+      transition-duration: .001ms !important;
+      transition-delay: 0s !important;
+    }
+    .notch:hover { transform: none; }
+  }
+</style>
+</head>
+
+<body>
+  <!-- faux macOS-style menu bar -->
+  <header class="menubar" aria-hidden="true">
+    <div class="menubar__left">
+      <span class="menubar__brand"><span class="menubar__dot"></span>Papa</span>
+      <span class="menubar__menu">File</span>
+      <span class="menubar__menu">Edit</span>
+      <span class="menubar__menu">View</span>
+      <span class="menubar__menu">Help</span>
+    </div>
+    <div class="menubar__right"><span>Mon 9:41 AM</span></div>
+  </header>
+
+  <!-- the notch -->
+  <div class="notch-anchor">
+    <div class="notch" id="notch">
+      <div class="mascot mascot--back" aria-hidden="true">
+        <svg id="mascotSvg" viewBox="0 0 80 70">
+          <rect class="m-body" x="8" y="6" width="64" height="62" rx="30" />
+          <ellipse class="m-cheek" cx="18" cy="45" rx="5" ry="3.6" />
+          <ellipse class="m-cheek" cx="62" cy="45" rx="5" ry="3.6" />
+          <g class="eyes-look" id="eyesLook">
+            <g class="eye-blink" id="eyeBlink">
+              <ellipse class="m-ink" cx="28" cy="34" rx="4.6" ry="5.6" />
+              <ellipse class="m-ink" cx="52" cy="34" rx="4.6" ry="5.6" />
+              <circle class="m-shine" cx="29.8" cy="31.8" r="1.6" />
+              <circle class="m-shine" cx="53.8" cy="31.8" r="1.6" />
+            </g>
+          </g>
+          <path class="m-mouth" d="M35.5 45 Q40 49.5 44.5 45" />
+        </svg>
+      </div>
+
+      <div class="card" id="card">
+        <div class="card__inner">
+          <div class="msg">
+            <div class="msg-body" id="msgBody" aria-live="polite">
+              <span class="msg__cat" id="msgCat"></span>
+              <span class="msg__text" id="msgText"></span>
+            </div>
+          </div>
+          <div class="meta">
+            <span class="count" id="count">01 / 14</span>
+            <button class="close" id="close" type="button" aria-label="Dismiss reminder">
+              <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mascot mascot--paws" aria-hidden="true">
+        <svg viewBox="0 0 80 70">
+          <ellipse class="m-paw" cx="14" cy="22" rx="9" ry="6.5" />
+          <ellipse class="m-paw paw-r" cx="66" cy="22" rx="9" ry="6.5" />
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <section class="hero">
+      <h1 class="hero__in">Someone's looking<br />out for you.</h1>
+      <p class="sub hero__in">Papa is a calm little companion that lives at the top of your screen and gently reminds you to take care of yourself.</p>
+      <div class="cta hero__in">
+        <!-- TODO: point these at the real release assets -->
+        <a class="btn btn--primary" href="#" id="dl-deb">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8m0 0L4.5 6.5M8 10l3.5-3.5M2.5 13.5h11"/></svg>
+          Download .deb
+        </a>
+        <a class="btn btn--ghost" href="#" id="dl-appimage">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8m0 0L4.5 6.5M8 10l3.5-3.5M2.5 13.5h11"/></svg>
+          Download AppImage
+        </a>
+      </div>
+      <p class="fine hero__in">v0.1.0 · Linux · Free, no account, nothing leaves your device</p>
+
+      <div class="studio hero__in" role="group" aria-label="Customize the reminder">
+        <p class="studio__title"><b>Make it yours.</b> The notch above updates as you choose.</p>
+        <div class="group">
+          <span class="group__label" id="lbl-lang">Language</span>
+          <div class="chips" role="radiogroup" aria-labelledby="lbl-lang" data-group="lang">
+            <button class="chip" role="radio" aria-checked="true"  data-value="en" type="button">English</button>
+            <button class="chip" role="radio" aria-checked="false" data-value="es" type="button">Español</button>
+            <button class="chip" role="radio" aria-checked="false" data-value="fr" type="button">Français</button>
+          </div>
+        </div>
+        <div class="group">
+          <span class="group__label" id="lbl-tone">Tone</span>
+          <div class="chips" role="radiogroup" aria-labelledby="lbl-tone" data-group="tone">
+            <button class="chip" role="radio" aria-checked="true"  data-value="gentle"  type="button">Gentle</button>
+            <button class="chip" role="radio" aria-checked="false" data-value="playful" type="button">Playful</button>
+            <button class="chip" role="radio" aria-checked="false" data-value="strict"  type="button">Strict</button>
+          </div>
+        </div>
+        <div class="group">
+          <span class="group__label" id="lbl-look">Appearance</span>
+          <div class="chips" role="radiogroup" aria-labelledby="lbl-look" data-group="theme">
+            <button class="chip" role="radio" aria-checked="true"  data-value="sunny" type="button"><i style="background:#ffcf5c"></i>Sunny</button>
+            <button class="chip" role="radio" aria-checked="false" data-value="mint"  type="button"><i style="background:#7fd8b0"></i>Mint</button>
+            <button class="chip" role="radio" aria-checked="false" data-value="lilac" type="button"><i style="background:#b9a4ff"></i>Lilac</button>
+            <button class="chip" role="radio" aria-checked="false" data-value="sky"   type="button"><i style="background:#7cc4ff"></i>Sky</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="features" id="features">
+      <div class="features__head reveal">
+        <h2>Looks after you, quietly.</h2>
+        <p>Small nudges, no noise, and nothing you have to sign up for.</p>
+      </div>
+      <div class="grid">
+        <article class="feature reveal">
+          <div class="feature__icon" style="background:#fff1c9">🔒</div>
+          <h3>Local-first</h3>
+          <p>Your reminders live in a database on your own machine. No accounts, no cloud, no analytics.</p>
+        </article>
+        <article class="feature reveal">
+          <div class="feature__icon" style="background:#d9f5e8">🫧</div>
+          <h3>Lives in your tray</h3>
+          <p>A tiny popup that appears when it matters, then tucks itself away until it's needed again.</p>
+        </article>
+        <article class="feature reveal">
+          <div class="feature__icon" style="background:#e7e0ff">🎭</div>
+          <h3>Pick the personality</h3>
+          <p>Gentle, playful or strict. Choose how your reminders sound, and swap whenever you like.</p>
+        </article>
+        <article class="feature reveal">
+          <div class="feature__icon" style="background:#d8ecff">🌍</div>
+          <h3>Speaks your language</h3>
+          <p>Reminders arrive in the language you actually think in, with a mascot that matches your mood.</p>
+        </article>
+        <article class="feature reveal">
+          <div class="feature__icon" style="background:#ffe1dc">🔔</div>
+          <h3>Starts only if you say so</h3>
+          <p>Launch on login is opt-in. Papa asks first and never sneaks into your startup items.</p>
+        </article>
+        <article class="feature reveal">
+          <div class="feature__icon" style="background:#eceae2">⚡</div>
+          <h3>Light as a feather</h3>
+          <p>Built with Tauri and a native Rust scheduler, so it sips memory and stays out of your way.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>Papa · Made to be forgotten about, except when you need it.</footer>
+
+<script>
+(() => {
+  'use strict';
+  document.documentElement.classList.add('js');
+
+  const $ = (s) => document.querySelector(s);
+  const reducedMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  /* ───────────── content ───────────── */
+  const REMINDERS = [
+    { n: 1, emoji: '💧',
+      cat: { en: 'Hydration', es: 'Hidratación', fr: 'Hydratation' },
+      text: {
+        gentle:  { en: 'Time to drink water', es: 'Es hora de beber un poco de agua', fr: "C'est l'heure de boire un peu d'eau" },
+        playful: { en: 'Sip sip! Your bottle misses you', es: '¡Glu glu! Tu botella te extraña', fr: "Glou glou ! Ta gourde s'ennuie" },
+        strict:  { en: 'Drink water. Now.', es: 'Bebe agua. Ahora.', fr: "Bois de l'eau. Maintenant." } } },
+    { n: 3, emoji: '🤸',
+      cat: { en: 'Movement', es: 'Movimiento', fr: 'Mouvement' },
+      text: {
+        gentle:  { en: 'Take a moment to stretch your back', es: 'Tómate un momento para estirar la espalda', fr: "Prends un instant pour t'étirer le dos" },
+        playful: { en: 'Wiggle time! Stretch like a cat', es: '¡A moverse! Estírate como un gato', fr: 'On se dégourdit ! Étire-toi comme un chat' },
+        strict:  { en: 'Stand up and stretch. Two minutes.', es: 'Levántate y estírate. Dos minutos.', fr: "Lève-toi et étire-toi. Deux minutes." } } },
+    { n: 5, emoji: '👀',
+      cat: { en: 'Rest your eyes', es: 'Descansa la vista', fr: 'Repos des yeux' },
+      text: {
+        gentle:  { en: 'Look far away for twenty seconds', es: 'Mira a lo lejos durante veinte segundos', fr: 'Regarde au loin pendant vingt secondes' },
+        playful: { en: 'Peek-a-boo! Give your eyes a break', es: '¡Cu-cú! Dale un respiro a tus ojos', fr: 'Coucou ! Offre une pause à tes yeux' },
+        strict:  { en: 'Look away from the screen. 20 seconds.', es: 'Aparta la vista de la pantalla. 20 s.', fr: "Quitte l'écran des yeux. 20 s." } } },
+    { n: 8, emoji: '🪑',
+      cat: { en: 'Posture', es: 'Postura', fr: 'Posture' },
+      text: {
+        gentle:  { en: 'Relax your shoulders and sit tall', es: 'Relaja los hombros y endereza la espalda', fr: 'Détends les épaules et redresse le dos' },
+        playful: { en: 'Shoulders down, superstar!', es: '¡Hombros abajo, estrella!', fr: 'Épaules en bas, superstar !' },
+        strict:  { en: 'Fix your posture. Shoulders back.', es: 'Corrige tu postura. Hombros atrás.', fr: 'Redresse-toi. Épaules en arrière.' } } },
+    { n: 11, emoji: '🌿',
+      cat: { en: 'Breathe', es: 'Respira', fr: 'Respire' },
+      text: {
+        gentle:  { en: 'Pause and take three slow breaths', es: 'Haz una pausa y respira lento tres veces', fr: 'Fais une pause et respire trois fois' },
+        playful: { en: "Inhale… exhale… you're doing great", es: 'Inhala… exhala… vas genial', fr: 'Inspire… expire… tu gères bien' },
+        strict:  { en: 'Stop. Breathe in for four seconds.', es: 'Para. Inhala durante cuatro segundos.', fr: 'Stop. Inspire pendant quatre secondes.' } } },
+    { n: 14, emoji: '🚶',
+      cat: { en: 'Walk', es: 'Camina', fr: 'Marche' },
+      text: {
+        gentle:  { en: 'A short walk would feel really nice', es: 'Un breve paseo te sentaría genial', fr: 'Une petite marche te ferait du bien' },
+        playful: { en: 'Your legs want an adventure!', es: '¡Tus piernas piden una aventura!', fr: "Tes jambes veulent de l'aventure !" },
+        strict:  { en: 'Get up. Walk for five minutes.', es: 'Levántate. Camina cinco minutos.', fr: 'Lève-toi. Marche cinq minutes.' } } },
+  ];
+  const TOTAL = 14;
+
+  const settings = { lang: 'en', tone: 'gentle', theme: 'sunny' };
+
+  /* ───────────── elements ───────────── */
+  const notch = $('#notch');
+  const msgBody = $('#msgBody');
+  const msgCat = $('#msgCat');
+  const msgText = $('#msgText');
+  const count = $('#count');
+  const closeBtn = $('#close');
+
+  /* ───────────── timing helpers ───────────── */
+  let wake = null; // resolves the sleep currently in progress, if any
+  const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+  const sleep = (ms) => new Promise((resolve) => {
+    const t = setTimeout(done, ms);
+    function done() { clearTimeout(t); wake = null; resolve(); }
+    wake = done;
+  });
+
+  /* ───────────── reminder state machine ───────────── */
+  const state = { open: false };
+  let idx = 0;
+  let hovering = false;
+  let upTimer = 0;
+  let holdIdx = false;  // chip preview asked to re-show the current reminder
+  let skipGap = false;
+  let dismissed = false;
+
+  function setContent(i) {
+    const r = REMINDERS[i % REMINDERS.length];
+    count.textContent = String(r.n).padStart(2, '0') + ' / ' + TOTAL;
+    msgCat.textContent = r.cat[settings.lang];
+    msgText.textContent = r.text[settings.tone][settings.lang] + ' ' + r.emoji;
+    msgBody.lang = settings.lang;
+  }
+
+  function openCard() {
+    setContent(idx);
+    state.open = true;
+    holdIdx = false;
+    notch.classList.remove('quick');
+    notch.classList.add('is-open');
+    clearTimeout(upTimer);
+    upTimer = setTimeout(() => notch.classList.add('mascot-up'), 350);
+  }
+
+  async function closeCard() {
+    if (!notch.classList.contains('is-open')) return;
+    state.open = false;
+    clearTimeout(upTimer);
+    notch.classList.remove('mascot-up'); // mascot ducks in first…
+    await delay(300);
+    notch.classList.remove('is-open');   // …then the card shrinks back
+    await delay(650);
+  }
+
+  async function dwell(ms) {
+    let left = ms;
+    while (left > 0 && state.open) {
+      await sleep(100);
+      if (!hovering && !document.hidden) left -= 100;
+    }
+  }
+
+  async function run() {
+    await sleep(1200);
+    for (;;) {
+      openCard();
+      await dwell(3500);
+      await closeCard();
+      if (skipGap) skipGap = false;
+      else await sleep(dismissed ? 4500 : 1400);
+      dismissed = false;
+      if (!holdIdx) idx = (idx + 1) % REMINDERS.length;
+    }
+  }
+
+  closeBtn.addEventListener('click', () => {
+    if (!state.open) return;
+    clearTimeout(upTimer);
+    state.open = false;
+    dismissed = true;
+    notch.classList.add('quick');
+    notch.classList.remove('mascot-up', 'is-open');
+  });
+
+  notch.addEventListener('pointerenter', () => { hovering = true; });
+  notch.addEventListener('pointerleave', () => { hovering = false; });
+
+  /* show a change immediately when a chip is picked */
+  function preview(swapText) {
+    if (state.open) {
+      if (!swapText) return;
+      msgBody.classList.add('swap');
+      setTimeout(() => { setContent(idx); msgBody.classList.remove('swap'); }, 125);
+    } else {
+      holdIdx = true;
+      skipGap = true;
+      if (wake) wake();
+    }
+  }
+
+  /* ───────────── chips ───────────── */
+  document.querySelectorAll('.chips').forEach((group) => {
+    group.addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      const key = group.dataset.group;
+      const value = chip.dataset.value;
+      if (settings[key] === value) return;
+      settings[key] = value;
+      group.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-checked', String(c === chip)));
+      if (key === 'theme') document.documentElement.dataset.theme = value;
+      preview(key !== 'theme');
+    });
+  });
+
+  /* ───────────── mascot: blink + eyes ───────────── */
+  const eyesLook = $('#eyesLook');
+  const eyeBlink = $('#eyeBlink');
+  const mascotSvg = $('#mascotSvg');
+  let lastPointer = -Infinity;
+  let pending = null;
+  let rafQueued = false;
+
+  function setLook(x, y) { eyesLook.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px)`; }
+
+  window.addEventListener('pointermove', (e) => {
+    if (reducedMQ.matches) return;
+    lastPointer = performance.now();
+    pending = { x: e.clientX, y: e.clientY };
+    if (rafQueued) return;
+    rafQueued = true;
+    requestAnimationFrame(() => {
+      rafQueued = false;
+      const p = pending; pending = null;
+      if (!p || !notch.classList.contains('mascot-up')) return;
+      const r = mascotSvg.getBoundingClientRect();
+      const dx = p.x - (r.left + r.width / 2);
+      const dy = p.y - (r.top + r.height * 0.48);
+      const d = Math.hypot(dx, dy) || 1;
+      const k = Math.min(1, d / 200);
+      setLook((dx / d) * 4 * k, (dy / d) * 2.6 * k);
+    });
+  }, { passive: true });
+
+  function blinkLoop() {
+    setTimeout(() => {
+      if (!reducedMQ.matches) {
+        eyeBlink.classList.add('blink');
+        setTimeout(() => eyeBlink.classList.remove('blink'), 140);
+      }
+      blinkLoop();
+    }, 3000 + Math.random() * 1000);
+  }
+  let side = 1;
+  function glanceLoop() {
+    setTimeout(() => {
+      // only wander when the cursor hasn't been steering recently
+      if (!reducedMQ.matches && performance.now() - lastPointer > 2500) {
+        setLook(side * 3.6, Math.random() * 1.2 - 0.4);
+        side = -side;
+      }
+      glanceLoop();
+    }, 3000 + Math.random() * 1000);
+  }
+  blinkLoop();
+  glanceLoop();
+
+  /* ───────────── scroll reveal ───────────── */
+  const targets = [...document.querySelectorAll('.reveal')];
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      entries
+        .filter((e) => e.isIntersecting)
+        .sort((a, b) => targets.indexOf(a.target) - targets.indexOf(b.target))
+        .forEach((e, i) => {
+          const el = e.target;
+          el.style.transitionDelay = i * 80 + 'ms';
+          el.classList.add('in');
+          // drop the stagger afterwards so later hover transitions aren't delayed
+          el.addEventListener('transitionend', () => { el.style.transitionDelay = ''; }, { once: true });
+          io.unobserve(el);
+        });
+    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+    targets.forEach((t) => io.observe(t));
+  } else {
+    targets.forEach((t) => t.classList.add('in'));
+  }
+
+  run();
+})();
+</script>
+</body>
+</html>

@@ -4,7 +4,15 @@
  * palette that reads on the `--color-nook` backdrop in both themes
  * (decorative only: `aria-hidden`, the dialog label carries the meaning).
  */
-export function PopupAvatar({ className = "" }: { className?: string }): JSX.Element {
+export function PopupAvatar({
+  className = "",
+  blink = false,
+}: {
+  className?: string;
+  /** Periodic eye blink (CSS, transform only). Off for reduced motion. */
+  blink?: boolean;
+}): JSX.Element {
+  const eye = blink ? "pip-eye" : undefined;
   return (
     <svg
       viewBox="0 0 96 112"
@@ -43,12 +51,14 @@ export function PopupAvatar({ className = "" }: { className?: string }): JSX.Ele
       <ellipse cx="48" cy="100" rx="20" ry="4" fill="#2e2620" opacity="0.06" />
       {/* sleepy-happy eyes */}
       <path
+        className={eye}
         d="M32 60 q5.5 5.5 11 0"
         stroke="#2e2620"
         strokeWidth="2.6"
         strokeLinecap="round"
       />
       <path
+        className={eye}
         d="M53 60 q5.5 5.5 11 0"
         stroke="#2e2620"
         strokeWidth="2.6"

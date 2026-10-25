@@ -13,16 +13,16 @@ import { PopupAvatar } from "./PopupAvatar";
 import { snoozeOptions } from "./types";
 
 /**
- * Companion popup as a staged top-center reveal (BACKGROUND DROP → PIP
- * REVEAL → PIP SETTLE → BUBBLE EXPANSION) on the transparent window:
+ * Companion popup as a staged top-center "notch" reveal (NOTCH EXPANDS → PIP
+ * PEEKS UP → CARD FADES IN) on the transparent window:
  * just the companion and a clean speech bubble (bold title + soft
  * subtitle) — no headers, pills, or buttons.
  *
  * Layers (each declares its own staged variants; sequencing needs no timers):
- * - BackgroundDropLayer: dark panel drops alone first.
- * - AvatarRevealLayer: avatar rises clipped from inside the panel, settles.
- * - BubbleRevealLayer: bubble unfolds rightward from the avatar (clip wipe,
- *   text never stretches), retracts first on exit.
+ * - BackgroundDropLayer: dark panel starts as a small notch, expands downward.
+ * - AvatarRevealLayer: avatar slides up clipped from inside the panel.
+ * - BubbleRevealLayer: card fades + slides up (text never stretches); exits
+ *   first on a timed dismiss, and everything collapses at once on a manual one.
  * The section itself is a static frame keyed by reminder id, so every queued
  * item enters cleanly and the whole notification still dismisses as one.
  *
@@ -73,7 +73,7 @@ export function ReminderPopup(): JSX.Element {
   return (
     <MotionConfig reducedMotion={popup.motion}>
       <div className="flex h-screen flex-col bg-transparent px-5 pt-1.5 pb-5 text-ink" onKeyDown={onKeyDown}>
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" custom={popup.leaveKind}>
           {current !== null && (
             <motion.section
               key={current.id}
@@ -88,6 +88,7 @@ export function ReminderPopup(): JSX.Element {
                   Static frame for the avatar reveal; stays behind it (z-0). */}
               <motion.div
                 className="relative z-0 mb-4 w-[132px] shrink-0"
+                style={{ originX: 0.5, originY: 0 }}
                 variants={backgroundDropVariants}
                 initial={reduced ? false : "initial"}
                 animate="animate"
@@ -115,7 +116,7 @@ export function ReminderPopup(): JSX.Element {
                           className="h-[148px] w-full object-cover"
                         />
                       ) : (
-                        <PopupAvatar className="-mb-5 h-[162px] w-auto" />
+                        <PopupAvatar blink={!reduced} className="-mb-5 h-[162px] w-auto" />
                       )}
                     </motion.div>
                   </motion.div>
@@ -127,6 +128,7 @@ export function ReminderPopup(): JSX.Element {
                   retracts first on exit. Tail points at the avatar. */}
               <motion.div
                 className="relative z-10 -ml-9 min-w-0 flex-1 rounded-[22px] bg-surface px-6 py-5 shadow-[var(--shadow-pop)] dark:border dark:border-line"
+                style={{ originX: 0, originY: 0.5 }}
                 variants={bubbleUnfoldVariants}
                 initial={reduced ? false : "initial"}
                 animate="animate"

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  AVATAR_PEEK_DELAY_S,
+  CARD_REVEAL_DELAY_S,
+  COLLAPSE_MANUAL_S,
+  NOTCH_EXPAND_S,
+  NOTCH_IDLE_S,
+  NOTCH_SPRING_EASE,
+  type DismissKind,
   avatarHover,
   avatarRiseVariants,
   backgroundDropVariants,
@@ -12,12 +19,18 @@ import {
   resolvePopupDismissMs,
 } from "./motion";
 
-function target(variants: unknown, stage: string): Record<string, unknown> {
-  return (variants as Record<string, Record<string, unknown>>)[stage] ?? {};
+function target(variants: unknown, stage: string, kind: DismissKind = "auto"): Record<string, unknown> {
+  const value = (variants as Record<string, unknown>)[stage];
+  const resolved = typeof value === "function" ? (value as (k: DismissKind) => unknown)(kind) : value;
+  return (resolved as Record<string, unknown> | undefined) ?? {};
 }
 
-function delayOf(stage: Record<string, unknown>): number {
-  return ((stage["transition"] as Record<string, unknown> | undefined)?.["delay"] as number) ?? 0;
+
+/** Delay/duration of the main (non-opacity) transition of a stage. */
+function mainOf(stage: Record<string, unknown>): { delay: number; duration: number } {
+  const t = (stage["transition"] as Record<string, unknown> | undefined) ?? {};
+  const main = (t["default"] as Record<string, number> | undefined) ?? (t as Record<string, number>);
+  return { delay: main["delay"] ?? 0, duration: main["duration"] ?? 0 };
 }
 
 describe("resolveMotion", () => {
@@ -51,41 +64,57 @@ describe("resolvePopupDismissMs", () => {
   });
 });
 
-describe("staged reveal presets", () => {
-  it("background drops alone first (no avatar, no bubble)", () => {
+describe("notch reveal presets", () => {
+  it("notch starts small, idles, then expands with the springy ease", () => {
     const initial = target(backgroundDropVariants, "initial");
-    expect(initial["opacity"]).toBe(0);
-    expect(initial["y"]).toBe(-30);
-    expect(initial["scale"]).toBe(0.96);
-    expect(delayOf(target(backgroundDropVariants, "animate"))).toBeLessThan(0.1);
+    expect(initial["scaleY"] as number).toBeLessThan(0.3);
+    expect(initial["scaleX"] as number).toBeLessThan(1);
+    const { delay, duration } = mainOf(target(backgroundDropVariants, "animate"));
+    expect(delay).toBe(NOTCH_IDLE_S);
+    expect(duration).toBe(NOTCH_EXPAND_S);
+    expect(NOTCH_SPRING_EASE).toEqual([0.34, 1.56, 0.64, 1]);
   });
-  it("avatar rises (not just fades) after the background", () => {
+  it("avatar slides up from inside the notch after it has expanded", () => {
     const initial = target(avatarRiseVariants, "initial");
     expect(initial["opacity"]).toBe(0);
-    // Rises from below: nonzero vertical offset (clipped by the panel).
     expect(initial["y"]).not.toBe(0);
     expect(initial["y"]).not.toBe("0%");
-    expect(delayOf(target(avatarRiseVariants, "animate"))).toBeGreaterThanOrEqual(0.25);
+    expect(mainOf(target(avatarRiseVariants, "animate")).delay).toBe(AVATAR_PEEK_DELAY_S);
+    expect(AVATAR_PEEK_DELAY_S).toBeGreaterThan(NOTCH_IDLE_S);
   });
-  it("bubble unfolds from the avatar side last, without scaling text", () => {
+  it("card text fades and slides in last (opacity + translateY only)", () => {
     const initial = target(bubbleUnfoldVariants, "initial");
     const animate = target(bubbleUnfoldVariants, "animate");
-    expect(initial["clipPath"]).toMatch(/inset\(0 0 0 100%/);
-    expect(animate["clipPath"]).toMatch(/inset\(0 0 0% 0/);
-    expect(initial).not.toHaveProperty("scaleX");
-    expect(animate).not.toHaveProperty("scaleX");
-    expect(delayOf(animate)).toBeGreaterThanOrEqual(0.5);
-  });
-  it("exit reverses the hierarchy: bubble, avatar, background", () => {
-    expect(delayOf(target(bubbleUnfoldVariants, "exit"))).toBe(0);
-    expect(delayOf(target(avatarRiseVariants, "exit"))).toBeGreaterThan(0);
-    expect(delayOf(target(backgroundDropVariants, "exit"))).toBeGreaterThan(
-      delayOf(target(avatarRiseVariants, "exit")),
-    );
-    for (const variants of [bubbleUnfoldVariants, avatarRiseVariants, backgroundDropVariants]) {
-      const transition = (target(variants, "exit")["transition"] as Record<string, unknown>) ?? {};
-      expect(transition["duration"] as number).toBeLessThanOrEqual(0.25);
+    expect(initial["opacity"]).toBe(0);
+    expect(initial["y"]).toBe(8);
+    expect(animate["opacity"]).toBe(1);
+    expect(animate["y"]).toBe(0);
+    for (const stage of [initial, animate]) {
+      expect(stage).not.toHaveProperty("clipPath");
+      expect(stage).not.toHaveProperty("scaleX");
     }
+    const { delay, duration } = mainOf(animate);
+    expect(delay).toBe(CARD_REVEAL_DELAY_S);
+    expect(delay).toBeGreaterThan(AVATAR_PEEK_DELAY_S);
+    expect(duration).toBeCloseTo(0.35, 5);
+  });
+  it("timed exit reverses the hierarchy: card, avatar, notch", () => {
+    const delayOf = (v: unknown): number => mainOf(target(v, "exit", "auto")).delay;
+    expect(delayOf(bubbleUnfoldVariants)).toBe(0);
+    expect(delayOf(avatarRiseVariants)).toBeGreaterThan(0);
+    expect(delayOf(backgroundDropVariants)).toBeGreaterThan(delayOf(avatarRiseVariants));
+    for (const variants of [bubbleUnfoldVariants, avatarRiseVariants, backgroundDropVariants]) {
+      expect(mainOf(target(variants, "exit", "auto")).duration).toBeLessThanOrEqual(0.25);
+    }
+  });
+  it("manual dismiss collapses every layer at once in ~200ms", () => {
+    for (const variants of [bubbleUnfoldVariants, avatarRiseVariants, backgroundDropVariants]) {
+      const exit = target(variants, "exit", "manual");
+      expect(exit["opacity"]).toBe(0);
+      expect(mainOf(exit)).toEqual({ delay: 0, duration: COLLAPSE_MANUAL_S });
+    }
+    expect(COLLAPSE_MANUAL_S).toBeCloseTo(0.2, 5);
+    expect(target(bubbleUnfoldVariants, "exit", "manual")["scale"] as number).toBeLessThan(1);
   });
   it("reduced-motion exit is a plain quick fade", () => {
     expect(flatExit["opacity"]).toBe(0);

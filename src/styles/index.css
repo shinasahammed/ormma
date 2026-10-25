@@ -131,7 +131,34 @@ body {
   border-radius: 6px;
 }
 
+/* Pip's blink (popup avatar). Period is tweakable; the eyes squash to a line
+ * for a beat. Starts after the notch reveal has finished. */
+:root {
+  --pip-blink-every: 3.5s;
+  --pip-blink-start: 1.6s;
+}
+.pip-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pip-blink var(--pip-blink-every) var(--pip-blink-start) infinite;
+}
+@keyframes pip-blink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  96.5% {
+    transform: scaleY(0.1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  /* The blanket rule below would turn an infinite blink into a strobe. */
+  .pip-eye {
+    animation: none;
+  }
+
   *,
   *::before,
   *::after {
