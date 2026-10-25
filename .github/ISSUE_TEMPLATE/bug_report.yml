@@ -1,0 +1,62 @@
+name: Bug report
+description: Something in Ormma isn't working as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Create a daily reminder for ...
+        2. Wait until ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Ormma version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: distro
+    attributes:
+      label: Distro and version
+      placeholder: Ubuntu 24.04
+    validations:
+      required: true
+  - type: dropdown
+    id: session
+    attributes:
+      label: Desktop environment and session
+      options:
+        - GNOME / Wayland
+        - GNOME / X11
+        - KDE / Wayland
+        - KDE / X11
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install it?
+      options:
+        - .deb
+        - AppImage
+        - Built from source
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Output from running Ormma in a terminal, if any.
+      render: shell

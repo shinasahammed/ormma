@@ -67,4 +67,6 @@ matrix (tray, popup, notifications, autostart, lifecycle, Linux DEs).
 
 ## License
 
+Contributions are welcome, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 MIT — see [LICENSE](LICENSE).
